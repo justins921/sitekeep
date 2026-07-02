@@ -1,18 +1,10 @@
 import Link from "next/link";
-import { requireAgency } from "@/lib/agency";
-import { createClient } from "@/lib/supabase/server";
-import { ButtonLink, Card, Spark } from "@/components/ui";
+import { Badge, ButtonLink, Card, Spark } from "@/components/ui";
+import { listClients } from "@/lib/clients";
 
 export default async function DashboardHome() {
-  const { agency } = await requireAgency();
-  const supabase = await createClient();
-
-  const { data: clients } = await supabase
-    .from("clients")
-    .select("id, company_name, website_url, slug, is_active, monthly_rate")
-    .order("created_at", { ascending: false });
-
-  const hasClients = (clients?.length ?? 0) > 0;
+  const clients = await listClients();
+  const hasClients = clients.length > 0;
 
   return (
     <div>
@@ -32,9 +24,7 @@ export default async function DashboardHome() {
             <span className="flex h-14 w-14 items-center justify-center rounded-full bg-brand-50">
               <Spark className="h-7 w-7 text-brand" />
             </span>
-            <h2 className="mt-5 text-xl font-bold tracking-tight">
-              No clients yet
-            </h2>
+            <h2 className="mt-5 text-xl font-bold tracking-tight">No clients yet</h2>
             <p className="mt-1 max-w-sm text-sm text-muted">
               Add your first client to generate a branded dashboard and start
               turning maintenance into recurring revenue.
@@ -47,25 +37,43 @@ export default async function DashboardHome() {
           </Card>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {clients!.map((c) => (
-              <Link key={c.id} href={`/dashboard/clients/${c.id}`} className="block">
-                <Card hover className="p-5">
-                  <h3 className="font-bold text-ink">{c.company_name}</h3>
-                  <p className="mt-1 truncate text-sm text-muted">
-                    {c.website_url}
-                  </p>
-                  <p className="mt-4 text-sm font-medium text-brand">
+            {clients.map((c) => (
+              <Card key={c.id} hover className="flex flex-col p-5">
+                <div className="flex items-start justify-between gap-2">
+                  <Link
+                    href={`/dashboard/clients/${c.id}`}
+                    className="min-w-0 flex-1"
+                  >
+                    <h3 className="truncate font-bold text-ink">{c.company_name}</h3>
+                    <p className="mt-1 truncate text-sm text-muted">
+                      {c.website_url}
+                    </p>
+                  </Link>
+                  {c.is_active ? (
+                    <Badge tone="green">Active</Badge>
+                  ) : (
+                    <Badge tone="neutral">Paused</Badge>
+                  )}
+                </div>
+
+                <div className="mt-4 flex items-center justify-between border-t border-line pt-4">
+                  <span className="text-sm font-medium text-brand">
                     ${Number(c.monthly_rate).toFixed(0)}/mo
-                  </p>
-                </Card>
-              </Link>
+                  </span>
+                  <a
+                    href={`/d/${c.slug}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-sm font-medium text-muted hover:text-brand"
+                  >
+                    View dashboard →
+                  </a>
+                </div>
+              </Card>
             ))}
           </div>
         )}
       </div>
-
-      {/* Agency context is available for future header personalization. */}
-      <span className="sr-only">{agency.name}</span>
     </div>
   );
 }
