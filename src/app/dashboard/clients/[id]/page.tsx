@@ -1,9 +1,13 @@
 import Link from "next/link";
 import { Badge, ButtonLink, Card } from "@/components/ui";
 import { getClientWithServices } from "@/lib/clients";
+import { getLatestSnapshots } from "@/lib/metrics";
+import { SERVICE_TYPES } from "@/lib/services";
+import { ServiceMetricBlock } from "@/components/metrics/MetricCards";
 import { ServiceToggles } from "./ServiceToggles";
 import { DeleteClientButton } from "./DeleteClientButton";
 import { CopyLinkButton } from "./CopyLinkButton";
+import { RefreshButton } from "./RefreshButton";
 
 export default async function ClientDetailPage({
   params,
@@ -12,6 +16,9 @@ export default async function ClientDetailPage({
 }) {
   const { id } = await params;
   const { client, services } = await getClientWithServices(id);
+  const snapshots = await getLatestSnapshots(id);
+
+  const enabledServices = SERVICE_TYPES.filter((t) => services[t]);
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
   const publicUrl = `${siteUrl}/d/${client.slug}`;
@@ -87,6 +94,36 @@ export default async function ClientDetailPage({
         <div className="mt-5">
           <ServiceToggles clientId={id} initial={services} />
         </div>
+      </div>
+
+      {/* Metrics */}
+      <div className="mt-12">
+        <div className="flex items-end justify-between gap-4">
+          <div>
+            <h2 className="text-xl font-bold tracking-tight">Metrics</h2>
+            <p className="mt-1 text-sm text-muted">
+              Live data for the enabled services. This is what the client sees.
+            </p>
+          </div>
+          <RefreshButton clientId={id} hasEnabled={enabledServices.length > 0} />
+        </div>
+
+        {enabledServices.length === 0 ? (
+          <Card className="mt-5 p-6 text-sm text-muted">
+            Enable a service above to start collecting metrics.
+          </Card>
+        ) : (
+          <div className="mt-5 space-y-8">
+            {enabledServices.map((type) => (
+              <ServiceMetricBlock
+                key={type}
+                type={type}
+                data={snapshots[type]?.data ?? null}
+                capturedAt={snapshots[type]?.captured_at}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

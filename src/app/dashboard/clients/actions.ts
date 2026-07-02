@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { createClient as createSupabase } from "@/lib/supabase/server";
 import { normalizeUrl, slugify } from "@/lib/utils";
 import { SERVICE_TYPES, type ServiceType } from "@/lib/services";
+import { runService } from "@/lib/metrics";
 
 export type ClientFormState = { error: string } | null;
 
@@ -131,6 +132,71 @@ export async function deleteClientAction(clientId: string): Promise<void> {
   await supabase.from("clients").delete().eq("id", clientId);
   revalidatePath("/dashboard");
   redirect("/dashboard");
+}
+
+export type RefreshResult = {
+  ran: boolean;
+  results: Array<{ service_type: ServiceType; ok: boolean; error?: string }>;
+};
+
+/**
+ * Re-run only the ENABLED services for a client, writing a fresh
+ * metric_snapshots row per successful service. Services run in parallel and
+ * are isolated: one provider failing (bad URL, timeout, API error) never
+ * blocks the others, and a failure leaves the prior snapshot intact.
+ */
+export async function refreshMetricsAction(
+  clientId: string,
+): Promise<RefreshResult> {
+  const supabase = await createSupabase();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  // RLS scopes this to the owner; a non-owned id returns null.
+  const { data: client } = await supabase
+    .from("clients")
+    .select("id, website_url")
+    .eq("id", clientId)
+    .maybeSingle();
+  if (!client) redirect("/dashboard");
+
+  const { data: enabledRows } = await supabase
+    .from("client_services")
+    .select("service_type")
+    .eq("client_id", clientId)
+    .eq("enabled", true);
+
+  const enabled = (enabledRows ?? []).map((r) => r.service_type as ServiceType);
+  if (enabled.length === 0) return { ran: false, results: [] };
+
+  const results = await Promise.all(
+    enabled.map(async (service_type) => {
+      try {
+        const result = await runService(service_type, client.website_url);
+        if (!result.ok) return { service_type, ok: false, error: result.error };
+
+        const { error } = await supabase.from("metric_snapshots").insert({
+          client_id: clientId,
+          service_type,
+          data: result.data,
+        });
+        if (error) return { service_type, ok: false, error: error.message };
+        return { service_type, ok: true };
+      } catch (err) {
+        return {
+          service_type,
+          ok: false,
+          error: err instanceof Error ? err.message : "Unexpected error.",
+        };
+      }
+    }),
+  );
+
+  revalidatePath(`/dashboard/clients/${clientId}`);
+  return { ran: true, results };
 }
 
 export async function setServiceEnabledAction(

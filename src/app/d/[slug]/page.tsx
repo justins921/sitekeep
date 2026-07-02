@@ -1,7 +1,8 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { Card } from "@/components/ui";
-import { SERVICE_META, type ServiceType } from "@/lib/clients";
+import { type ServiceType } from "@/lib/services";
+import { ServiceMetricBlock } from "@/components/metrics/MetricCards";
 
 // NOTE: minimal public view so Phase 2 links resolve. Phase 4 fully white-labels
 // this (agency logo + brand_color, live metrics, last-updated, agency footer).
@@ -10,7 +11,7 @@ type PublicDashboard = {
   client: { company_name: string; website_url: string; logo_url: string | null };
   agency: { name: string; logo_url: string | null; brand_color: string };
   services: ServiceType[];
-  metrics: Record<string, unknown>;
+  metrics: Partial<Record<ServiceType, unknown>>;
 };
 
 export default async function PublicDashboardPage({
@@ -45,22 +46,19 @@ export default async function PublicDashboardPage({
           </a>
         </header>
 
-        <div className="mt-10 grid gap-4 sm:grid-cols-3">
+        <div className="mt-10 space-y-8">
           {dash.services.length === 0 ? (
-            <Card className="col-span-full p-8 text-center text-sm text-muted">
+            <Card className="p-8 text-center text-sm text-muted">
               No services are enabled for this dashboard yet.
             </Card>
           ) : (
-            dash.services.map((type) => {
-              const meta = SERVICE_META[type];
-              return (
-                <Card key={type} tint={meta.tint} className="p-6">
-                  <h2 className="font-bold text-ink">{meta.label}</h2>
-                  <p className="mt-1 text-sm text-body">{meta.blurb}</p>
-                  <p className="mt-4 text-xs text-muted">Metrics coming soon</p>
-                </Card>
-              );
-            })
+            dash.services.map((type) => (
+              <ServiceMetricBlock
+                key={type}
+                type={type}
+                data={dash.metrics[type] ?? null}
+              />
+            ))
           )}
         </div>
 
