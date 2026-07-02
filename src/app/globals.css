@@ -1,0 +1,90 @@
+/* Satoshi — the exact typeface used on the SiteKeep marketing site (Fontshare CDN).
+   Inter is loaded via next/font as a robust fallback. Must precede other rules. */
+@import url("https://api.fontshare.com/v2/css?f[]=satoshi@400,500,700,900&display=swap");
+@import "tailwindcss";
+
+/*
+  Design tokens sampled directly from the live landing page CSS
+  (sitekeep-landing.webflow.io). The brand is a vivid blue (#0068ff),
+  navy heading ink, with orange / magenta / green "spark" accents.
+*/
+@theme {
+  /* Brand blue scale */
+  --color-brand-50: #f2f7ff;
+  --color-brand-100: #e0edff;
+  --color-brand-200: #b2d9ff;
+  --color-brand-300: #63a1ff;
+  --color-brand-400: #2c80ff;
+  --color-brand-500: #0068ff;
+  --color-brand-600: #2759b0;
+  --color-brand-700: #1e4589;
+
+  --color-brand: #0068ff;
+  --color-brand-hover: #2759b0;
+
+  /* Spark accents */
+  --color-accent-orange: #e87c2e;
+  --color-accent-magenta: #cb52cc;
+  --color-accent-green: #6cad45;
+
+  /* Ink / text */
+  --color-ink: #0e213d;      /* headings — deep navy */
+  --color-body: #404040;     /* body copy */
+  --color-muted: #757575;    /* secondary text */
+  --color-faint: #b8b8b8;    /* placeholders / very light text */
+
+  /* Surfaces */
+  --color-surface: #ffffff;
+  --color-canvas: #fafafa;
+  --color-canvas-alt: #f7f7f7;
+  --color-line: #e5e5e5;     /* hairline borders */
+
+  /* Pastel feature-card fills */
+  --color-fill-blue: #f2f7ff;
+  --color-fill-pink: #fdf0f6;
+  --color-fill-green: #eefbf3;
+  --color-fill-violet: #f1eefe;
+
+  /* Typography */
+  --font-sans: "Satoshi", "Inter", ui-sans-serif, system-ui, Arial, sans-serif;
+
+  /* Radii — cards ~16–22px, pills 99px */
+  --radius-card: 18px;
+  --radius-card-lg: 22px;
+  --radius-pill: 99px;
+
+  /* Soft, low shadows */
+  --shadow-soft: 0 1px 2px rgba(14, 33, 61, 0.04), 0 4px 16px rgba(14, 33, 61, 0.06);
+  --shadow-soft-md: 0 4px 12px rgba(14, 33, 61, 0.08), 0 12px 32px rgba(14, 33, 61, 0.10);
+}
+
+:root {
+  --background: #ffffff;
+  --foreground: #0e213d;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  background: var(--background);
+  color: var(--color-body);
+  font-family: var(--font-sans);
+}
+
+/* Headings default to navy ink + tight tracking, matching the landing page */
+h1, h2, h3, h4, h5, h6 {
+  color: var(--color-ink);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+/* Soft blue/magenta gradient wash used behind the hero + app canvas */
+.bg-wash {
+  background:
+    radial-gradient(60% 50% at 15% 0%, rgba(0, 104, 255, 0.08), transparent 60%),
+    radial-gradient(50% 45% at 100% 10%, rgba(203, 82, 204, 0.06), transparent 55%),
+    #fafafa;
+}
