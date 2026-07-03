@@ -14,6 +14,7 @@ export type Client = {
   logo_url: string | null;
   slug: string;
   is_active: boolean;
+  ga4_property_id: string | null;
   created_at: string;
 };
 

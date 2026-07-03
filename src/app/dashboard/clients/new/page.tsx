@@ -2,8 +2,10 @@ import Link from "next/link";
 import { Card } from "@/components/ui";
 import { ClientForm } from "../ClientForm";
 import { createClientAction } from "../actions";
+import { getServiceAccount } from "@/lib/metrics/ga4";
 
 export default function NewClientPage() {
+  const gaEmail = getServiceAccount()?.client_email ?? null;
   return (
     <div className="mx-auto max-w-2xl">
       <Link href="/dashboard" className="text-sm font-medium text-muted hover:text-ink">
@@ -15,7 +17,11 @@ export default function NewClientPage() {
       </p>
 
       <Card className="mt-8 p-8">
-        <ClientForm action={createClientAction} submitLabel="Create client" />
+        <ClientForm
+          action={createClientAction}
+          submitLabel="Create client"
+          gaServiceAccountEmail={gaEmail}
+        />
       </Card>
     </div>
   );

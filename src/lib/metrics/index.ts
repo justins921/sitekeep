@@ -7,21 +7,25 @@ import { runTraffic } from "./traffic";
 
 export * from "./types";
 
+/** Extra per-run inputs a provider may need beyond the URL. */
+export type RunOptions = { ga4PropertyId?: string | null };
+
 /** Provider registry — one entry per service_type. */
 const PROVIDERS: Record<
   ServiceType,
-  (url: string) => Promise<ServiceResult<unknown>>
+  (url: string, opts: RunOptions) => Promise<ServiceResult<unknown>>
 > = {
-  page_speed: runPageSpeed,
-  traffic: runTraffic,
-  security: runSecurity,
+  page_speed: (url) => runPageSpeed(url),
+  traffic: (url, opts) => runTraffic(url, opts.ga4PropertyId),
+  security: (url) => runSecurity(url),
 };
 
 export function runService(
   type: ServiceType,
   url: string,
+  opts: RunOptions = {},
 ): Promise<ServiceResult<unknown>> {
-  return PROVIDERS[type](url);
+  return PROVIDERS[type](url, opts);
 }
 
 /**

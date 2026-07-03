@@ -16,6 +16,7 @@ import {
   paidSeatsFor,
   syncSubscriptionQuantity,
 } from "@/lib/billing";
+import { normalizeGa4PropertyId } from "@/lib/metrics/ga4";
 
 export type ClientFormState = { error: string } | null;
 
@@ -24,6 +25,7 @@ type ClientValues = {
   website_url: string;
   contact_email: string | null;
   monthly_rate: number;
+  ga4_property_id: string | null;
 };
 type ParseResult = { error: string } | { values: ClientValues };
 
@@ -45,12 +47,21 @@ function parseForm(formData: FormData): ParseResult {
     return { error: "Monthly rate must be a positive number." as const };
   }
 
+  const rawGa4 = String(formData.get("ga4_property_id") ?? "").trim();
+  if (rawGa4 && !normalizeGa4PropertyId(rawGa4)) {
+    return {
+      error:
+        "GA4 Property ID must be numeric (e.g. 123456789), not a G-XXXX measurement ID.",
+    };
+  }
+
   return {
     values: {
       company_name,
       website_url,
       contact_email: contact_email || null,
       monthly_rate,
+      ga4_property_id: normalizeGa4PropertyId(rawGa4),
     },
   };
 }
@@ -264,7 +275,7 @@ export async function refreshMetricsAction(
   // RLS scopes this to the owner; a non-owned id returns null.
   const { data: client } = await supabase
     .from("clients")
-    .select("id, website_url")
+    .select("id, website_url, ga4_property_id")
     .eq("id", clientId)
     .maybeSingle();
   if (!client) redirect("/dashboard");
@@ -281,7 +292,9 @@ export async function refreshMetricsAction(
   const results = await Promise.all(
     enabled.map(async (service_type) => {
       try {
-        const result = await runService(service_type, client.website_url);
+        const result = await runService(service_type, client.website_url, {
+          ga4PropertyId: client.ga4_property_id,
+        });
         if (!result.ok) return { service_type, ok: false, error: result.error };
 
         const { error } = await supabase.from("metric_snapshots").insert({
