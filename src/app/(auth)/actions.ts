@@ -81,6 +81,54 @@ export async function signup(
   return { ok: "check_email", email };
 }
 
+export type ResetRequestState = { sent: true; email: string } | { error: string } | null;
+
+/** Send a password-reset email. The link lands on /auth/confirm → /auth/reset. */
+export async function requestPasswordReset(
+  _prev: ResetRequestState,
+  formData: FormData,
+): Promise<ResetRequestState> {
+  const email = String(formData.get("email") ?? "").trim();
+  if (!email) return { error: "Enter your email address." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${siteUrl()}/auth/confirm?next=/auth/reset`,
+  });
+  // Supabase does not reveal whether the address exists; surface only real
+  // errors (e.g. rate limiting) and otherwise show the neutral "sent" state.
+  if (error) return { error: error.message };
+  return { sent: true, email };
+}
+
+export type UpdatePasswordState = { error: string } | null;
+
+/** Set a new password using the active recovery session, then send to login. */
+export async function updatePassword(
+  _prev: UpdatePasswordState,
+  formData: FormData,
+): Promise<UpdatePasswordState> {
+  const password = String(formData.get("password") ?? "");
+  const confirm = String(formData.get("confirm") ?? "");
+  if (password.length < 8) return { error: "Password must be at least 8 characters." };
+  if (password !== confirm) return { error: "Those passwords don't match." };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { error: "Your reset link has expired. Request a new one from “Forgot password?”." };
+  }
+
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) return { error: error.message };
+
+  // Drop the recovery session so they log in fresh with the new password.
+  await supabase.auth.signOut();
+  redirect("/login?reset=1");
+}
+
 /** Resend the signup confirmation email (used from the check-your-inbox state). */
 export async function resendConfirmation(
   email: string,
