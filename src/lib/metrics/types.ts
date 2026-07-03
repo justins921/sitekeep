@@ -46,10 +46,27 @@ export type TrafficData = {
   trend_pct: number; // sessions vs the prior period
 };
 
+export type UptimeIncidentSummary = {
+  type: "downtime" | "ssl_expiring";
+  started_at: string;
+  resolved_at: string | null;
+};
+
+export type UptimeData = {
+  status: "up" | "down" | "unknown";
+  uptime_pct: number | null; // % up over the rolling window
+  window_days: number;
+  checks: number; // sample size behind uptime_pct
+  avg_response_ms: number | null;
+  last_check_at: string | null;
+  last_incident: UptimeIncidentSummary | null;
+};
+
 export type ServiceDataMap = {
   page_speed: PageSpeedData;
   traffic: TrafficData;
   security: SecurityData;
+  uptime: UptimeData;
 };
 
 /** A latest snapshot as read back for rendering. */

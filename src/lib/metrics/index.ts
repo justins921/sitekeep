@@ -10,7 +10,9 @@ export * from "./types";
 /** Extra per-run inputs a provider may need beyond the URL. */
 export type RunOptions = { ga4PropertyId?: string | null };
 
-/** Provider registry — one entry per service_type. */
+/** Provider registry — one entry per service_type.
+ * `uptime` is driven by src/lib/uptime.ts (it needs DB access to log checks and
+ * manage incidents), so it's handled outside this URL→result path. */
 const PROVIDERS: Record<
   ServiceType,
   (url: string, opts: RunOptions) => Promise<ServiceResult<unknown>>
@@ -18,6 +20,7 @@ const PROVIDERS: Record<
   page_speed: (url) => runPageSpeed(url),
   traffic: (url, opts) => runTraffic(url, opts.ga4PropertyId),
   security: (url) => runSecurity(url),
+  uptime: async () => ({ ok: false, error: "uptime is handled by the uptime monitor" }),
 };
 
 export function runService(

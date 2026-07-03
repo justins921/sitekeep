@@ -38,10 +38,17 @@ export async function updateBrandingAction(
   if (!name) return { error: "Agency name is required." };
 
   const brand_color = normalizeHex(String(formData.get("brand_color") ?? ""));
+  const alertRaw = String(formData.get("alert_email") ?? "").trim();
 
-  const update: { name: string; brand_color: string; logo_url?: string } = {
+  const update: {
+    name: string;
+    brand_color: string;
+    alert_email: string | null;
+    logo_url?: string;
+  } = {
     name,
     brand_color,
+    alert_email: alertRaw || null,
   };
 
   // Optional logo upload.

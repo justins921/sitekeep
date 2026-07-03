@@ -2,7 +2,7 @@ import { requireAgency } from "@/lib/agency";
 import { SettingsForm } from "./SettingsForm";
 
 export default async function SettingsPage() {
-  const { agency } = await requireAgency();
+  const { agency, userEmail } = await requireAgency();
 
   return (
     <div>
@@ -14,10 +14,12 @@ export default async function SettingsPage() {
 
       <div className="mt-8">
         <SettingsForm
+          ownerEmail={userEmail}
           defaults={{
             name: agency.name,
             brand_color: agency.brand_color,
             logo_url: agency.logo_url,
+            alert_email: agency.alert_email,
           }}
         />
       </div>

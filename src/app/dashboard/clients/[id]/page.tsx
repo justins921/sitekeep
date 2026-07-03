@@ -3,7 +3,11 @@ import { Badge, Button, ButtonLink, Card } from "@/components/ui";
 import { getClientWithServices } from "@/lib/clients";
 import { getLatestSnapshots } from "@/lib/metrics";
 import { SERVICE_TYPES } from "@/lib/services";
-import { ServiceMetricBlock } from "@/components/metrics/MetricCards";
+import {
+  ServiceMetricBlock,
+  IncidentList,
+  type IncidentEntry,
+} from "@/components/metrics/MetricCards";
 import { createClient } from "@/lib/supabase/server";
 import { ServiceToggles } from "./ServiceToggles";
 import { DeleteClientButton } from "./DeleteClientButton";
@@ -35,13 +39,19 @@ export default async function ClientDetailPage({
   const snapshots = await getLatestSnapshots(id);
 
   const supabase = await createClient();
-  const [{ data: report }, sub] = await Promise.all([
+  const [{ data: report }, sub, { data: incidents }] = await Promise.all([
     supabase
       .from("reports")
       .select("enabled, send_day, recipient_email, last_sent_at")
       .eq("client_id", id)
       .maybeSingle(),
     getSubscription(supabase, client.agency_id),
+    supabase
+      .from("incidents")
+      .select("type, started_at, resolved_at, details")
+      .eq("client_id", id)
+      .order("started_at", { ascending: false })
+      .limit(10),
   ]);
   const entitled = isEntitled(sub?.status);
 
@@ -192,6 +202,19 @@ export default async function ClientDetailPage({
           </div>
         )}
       </div>
+
+      {/* Incident log (uptime service) */}
+      {services.uptime && (
+        <div className="mt-12">
+          <h2 className="text-xl font-bold tracking-tight">Incident log</h2>
+          <p className="mt-1 text-sm text-muted">
+            Downtime and SSL-expiry incidents detected by the uptime monitor.
+          </p>
+          <div className="mt-5">
+            <IncidentList incidents={(incidents ?? []) as IncidentEntry[]} />
+          </div>
+        </div>
+      )}
 
       {/* Monthly report */}
       <div className="mt-12">

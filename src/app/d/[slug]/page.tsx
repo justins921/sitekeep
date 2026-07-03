@@ -3,7 +3,11 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { Card } from "@/components/ui";
 import { type ServiceType } from "@/lib/services";
-import { ServiceMetricBlock } from "@/components/metrics/MetricCards";
+import {
+  ServiceMetricBlock,
+  IncidentList,
+  type IncidentEntry,
+} from "@/components/metrics/MetricCards";
 import { timeAgo } from "@/components/metrics/format";
 import { normalizeHex, readableText, safeAccent, withAlpha } from "@/lib/color";
 
@@ -13,6 +17,7 @@ type PublicDashboard = {
   services: ServiceType[];
   metrics: Partial<Record<ServiceType, unknown>>;
   updated: Partial<Record<ServiceType, string>>;
+  incidents: IncidentEntry[];
 };
 
 async function loadDashboard(slug: string): Promise<PublicDashboard | null> {
@@ -126,6 +131,21 @@ export default async function PublicDashboardPage({
             ))
           )}
         </div>
+
+        {/* Incident history (uptime service) */}
+        {dash.services.includes("uptime") && dash.incidents.length > 0 && (
+          <div
+            className="mt-10 border-t-2 pt-6"
+            style={{ borderColor: withAlpha(brand, 0.25) }}
+          >
+            <h3 className="text-lg font-bold text-ink" style={{ color: accent }}>
+              Recent incidents
+            </h3>
+            <div className="mt-3">
+              <IncidentList incidents={dash.incidents} />
+            </div>
+          </div>
+        )}
 
         {/* Agency footer — no SiteKeep branding */}
         <footer className="mt-14 border-t border-line pt-6 text-center">

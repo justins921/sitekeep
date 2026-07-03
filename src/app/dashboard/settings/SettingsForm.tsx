@@ -10,8 +10,15 @@ const inputClass =
 
 export function SettingsForm({
   defaults,
+  ownerEmail,
 }: {
-  defaults: { name: string; brand_color: string; logo_url: string | null };
+  defaults: {
+    name: string;
+    brand_color: string;
+    logo_url: string | null;
+    alert_email: string | null;
+  };
+  ownerEmail: string;
 }) {
   const [state, formAction, pending] = useActionState<BrandingState, FormData>(
     updateBrandingAction,
@@ -74,6 +81,24 @@ export function SettingsForm({
               className={inputClass}
             />
           </div>
+        </div>
+
+        <div className="space-y-1.5">
+          <label htmlFor="alert_email" className="text-sm font-medium text-ink">
+            Alert email <span className="text-faint">(optional)</span>
+          </label>
+          <input
+            id="alert_email"
+            name="alert_email"
+            type="email"
+            defaultValue={defaults.alert_email ?? ""}
+            placeholder={ownerEmail}
+            className={inputClass}
+          />
+          <p className="text-xs text-muted">
+            Where downtime &amp; SSL-expiry alerts are sent. Defaults to your
+            login email ({ownerEmail}).
+          </p>
         </div>
 
         <div className="space-y-1.5">

@@ -2,12 +2,12 @@
 // free of any server-only imports (no next/headers, no supabase server client)
 // so Client Components can import it safely.
 
-export const SERVICE_TYPES = ["page_speed", "traffic", "security"] as const;
+export const SERVICE_TYPES = ["page_speed", "traffic", "security", "uptime"] as const;
 export type ServiceType = (typeof SERVICE_TYPES)[number];
 
 export const SERVICE_META: Record<
   ServiceType,
-  { label: string; blurb: string; tint: "blue" | "violet" | "green" }
+  { label: string; blurb: string; tint: "blue" | "violet" | "green" | "pink" }
 > = {
   page_speed: {
     label: "Page Speed",
@@ -23,5 +23,10 @@ export const SERVICE_META: Record<
     label: "Security",
     blurb: "Automated SSL and security-header checks.",
     tint: "green",
+  },
+  uptime: {
+    label: "Uptime",
+    blurb: "24/7 uptime monitoring with downtime & SSL alerts.",
+    tint: "pink",
   },
 };

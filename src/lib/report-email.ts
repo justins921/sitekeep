@@ -5,6 +5,7 @@ import type {
   PageSpeedData,
   SecurityData,
   TrafficData,
+  UptimeData,
 } from "@/lib/metrics/types";
 import { cls, ms, rate, secs } from "@/components/metrics/format";
 import { normalizeHex, readableText, safeAccent } from "@/lib/color";
@@ -77,6 +78,21 @@ function traffic(d: TrafficData): string {
   ]);
 }
 
+function uptime(d: UptimeData): string {
+  const statusText = { up: "Operational", down: "Down", unknown: "No data yet" }[d.status];
+  const statusColor = { up: "#6cad45", down: "#cb52cc", unknown: INK }[d.status];
+  const incident = d.last_incident
+    ? `<div style="font:500 12px Arial,sans-serif;color:${MUTED};padding:10px 6px 0;">Last incident: ${d.last_incident.type === "downtime" ? "Downtime" : "SSL expiring"} on ${new Date(d.last_incident.started_at).toLocaleDateString()}${d.last_incident.resolved_at ? " (resolved)" : " (ongoing)"}.</div>`
+    : "";
+  return (
+    row([
+      card("Status", statusText, "", statusColor),
+      card("Uptime", d.uptime_pct === null ? "—" : d.uptime_pct.toFixed(1), d.uptime_pct === null ? "" : `% ${d.window_days}d`, INK),
+      card("Avg response", d.avg_response_ms?.toString() ?? "—", d.avg_response_ms !== null ? "ms" : "", INK),
+    ]) + incident
+  );
+}
+
 function serviceSection(type: ServiceType, data: unknown): string {
   const meta = SERVICE_META[type];
   const isDemo = type === "traffic" && Boolean((data as TrafficData | null)?.demo);
@@ -85,6 +101,7 @@ function serviceSection(type: ServiceType, data: unknown): string {
     body = `<div style="border:1px solid ${LINE};border-radius:14px;padding:16px;font:400 13px Arial,sans-serif;color:${MUTED};">No data captured yet.</div>`;
   } else if (type === "page_speed") body = pageSpeed(data as PageSpeedData);
   else if (type === "security") body = security(data as SecurityData);
+  else if (type === "uptime") body = uptime(data as UptimeData);
   else body = traffic(data as TrafficData);
 
   return `

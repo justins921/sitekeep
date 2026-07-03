@@ -4,7 +4,7 @@ import type { SecurityData, SecurityGrade, ServiceResult } from "./types";
 const FETCH_TIMEOUT_MS = 15_000;
 const TLS_TIMEOUT_MS = 10_000;
 
-type CertInfo = {
+export type CertInfo = {
   valid: boolean;
   validTo: string | null;
   daysToExpiry: number | null;
@@ -12,7 +12,7 @@ type CertInfo = {
 };
 
 /** Inspect the TLS certificate directly for validity + days-to-expiry. */
-function inspectCertificate(host: string): Promise<CertInfo> {
+export function inspectCertificate(host: string): Promise<CertInfo> {
   return new Promise((resolve) => {
     let settled = false;
     const done = (info: CertInfo) => {

@@ -4,6 +4,7 @@ import type {
   PageSpeedData,
   SecurityData,
   TrafficData,
+  UptimeData,
 } from "@/lib/metrics/types";
 import { cls, ms, rate, ratingAccent, scoreAccent, secs, timeAgo } from "./format";
 
@@ -149,6 +150,101 @@ export function TrafficMetrics({ data }: { data: TrafficData }) {
   );
 }
 
+// -------------------------------------------------------------------- Uptime
+
+const UPTIME_STATUS: Record<UptimeData["status"], { label: string; tone: "green" | "magenta" | "neutral"; accent: string }> = {
+  up: { label: "Operational", tone: "green", accent: "text-accent-green" },
+  down: { label: "Down", tone: "magenta", accent: "text-accent-magenta" },
+  unknown: { label: "No data yet", tone: "neutral", accent: "text-ink" },
+};
+
+export function UptimeMetrics({ data }: { data: UptimeData }) {
+  const s = UPTIME_STATUS[data.status];
+  return (
+    <div className="grid gap-4 sm:grid-cols-3">
+      <Card className="flex flex-col justify-center p-5">
+        <p className="text-sm font-medium text-muted">Current status</p>
+        <div className="mt-2">
+          <Badge tone={s.tone}>{s.label}</Badge>
+        </div>
+      </Card>
+      <StatCard
+        label={`Uptime (${data.window_days}d)`}
+        value={data.uptime_pct === null ? "—" : data.uptime_pct.toFixed(1)}
+        unit={data.uptime_pct === null ? undefined : "%"}
+        accent={
+          data.uptime_pct === null
+            ? "text-ink"
+            : data.uptime_pct >= 99.9
+              ? "text-accent-green"
+              : data.uptime_pct >= 99
+                ? "text-accent-orange"
+                : "text-accent-magenta"
+        }
+      />
+      <StatCard
+        label="Avg response"
+        value={data.avg_response_ms ?? "—"}
+        unit={data.avg_response_ms !== null ? "ms" : undefined}
+      />
+    </div>
+  );
+}
+
+// ------------------------------------------------------------ Incident list
+
+export type IncidentEntry = {
+  type: "downtime" | "ssl_expiring";
+  started_at: string;
+  resolved_at: string | null;
+  details?: { days_to_expiry?: number; status_code?: number | null } | null;
+};
+
+const INCIDENT_LABEL = { downtime: "Downtime", ssl_expiring: "SSL expiring" } as const;
+
+function incidentDuration(started: string, resolved: string | null): string {
+  const end = resolved ? new Date(resolved).getTime() : Date.now();
+  const mins = Math.max(1, Math.round((end - new Date(started).getTime()) / 60000));
+  if (mins < 60) return `${mins}m`;
+  const h = Math.round(mins / 60);
+  if (h < 24) return `${h}h`;
+  return `${Math.round(h / 24)}d`;
+}
+
+export function IncidentList({ incidents }: { incidents: IncidentEntry[] }) {
+  if (incidents.length === 0) {
+    return (
+      <Card className="p-5 text-sm text-muted">No incidents recorded. All clear.</Card>
+    );
+  }
+  return (
+    <Card className="divide-y divide-line p-0">
+      {incidents.map((i, idx) => {
+        const open = !i.resolved_at;
+        return (
+          <div key={idx} className="flex items-center justify-between gap-3 px-5 py-3">
+            <div className="flex items-center gap-3">
+              <Badge tone={open ? "magenta" : "neutral"}>
+                {open ? "Ongoing" : "Resolved"}
+              </Badge>
+              <div>
+                <p className="text-sm font-medium text-ink">{INCIDENT_LABEL[i.type]}</p>
+                <p className="text-xs text-muted">
+                  {new Date(i.started_at).toLocaleString()}
+                  {i.type === "ssl_expiring" && typeof i.details?.days_to_expiry === "number"
+                    ? ` · ${i.details.days_to_expiry}d to expiry`
+                    : ""}
+                </p>
+              </div>
+            </div>
+            <span className="text-xs text-muted">{incidentDuration(i.started_at, i.resolved_at)}</span>
+          </div>
+        );
+      })}
+    </Card>
+  );
+}
+
 // -------------------------------------------------------- Composed per-service
 
 /**
@@ -193,6 +289,8 @@ export function ServiceMetricBlock({
           <PageSpeedMetrics data={data as PageSpeedData} />
         ) : type === "security" ? (
           <SecurityMetrics data={data as SecurityData} />
+        ) : type === "uptime" ? (
+          <UptimeMetrics data={data as UptimeData} />
         ) : (
           <TrafficMetrics data={data as TrafficData} />
         )}

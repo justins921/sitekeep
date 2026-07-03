@@ -7,6 +7,7 @@ export type Agency = {
   name: string;
   logo_url: string | null;
   brand_color: string;
+  alert_email: string | null;
   created_at: string;
 };
 

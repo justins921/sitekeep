@@ -17,6 +17,7 @@ import {
   syncSubscriptionQuantity,
 } from "@/lib/billing";
 import { normalizeGa4PropertyId } from "@/lib/metrics/ga4";
+import { recordUptimeCheck, writeUptimeSnapshot } from "@/lib/uptime";
 
 export type ClientFormState = { error: string } | null;
 
@@ -292,6 +293,14 @@ export async function refreshMetricsAction(
   const results = await Promise.all(
     enabled.map(async (service_type) => {
       try {
+        // Uptime is stateful (logs a check + rolling snapshot); other services
+        // are pure URL→result and share the insert path below.
+        if (service_type === "uptime") {
+          await recordUptimeCheck(supabase, clientId, client.website_url);
+          await writeUptimeSnapshot(supabase, clientId, new Date());
+          return { service_type, ok: true };
+        }
+
         const result = await runService(service_type, client.website_url, {
           ga4PropertyId: client.ga4_property_id,
         });
