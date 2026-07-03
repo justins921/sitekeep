@@ -6,9 +6,9 @@ import { login } from "../actions";
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ confirm?: string }>;
+  searchParams: Promise<{ confirm?: string; error?: string; reset?: string }>;
 }) {
-  const { confirm } = await searchParams;
+  const { confirm, error, reset } = await searchParams;
 
   return (
     <Card className="p-8">
@@ -20,6 +20,16 @@ export default async function LoginPage({
       {confirm && (
         <p className="mt-4 rounded-xl bg-fill-blue px-4 py-3 text-sm text-brand">
           Check your inbox to confirm your email, then log in.
+        </p>
+      )}
+      {reset && (
+        <p className="mt-4 rounded-xl bg-fill-green px-4 py-3 text-sm text-accent-green">
+          Password updated — log in with your new password.
+        </p>
+      )}
+      {error && (
+        <p className="mt-4 rounded-xl bg-fill-pink px-4 py-3 text-sm text-accent-magenta">
+          {error}
         </p>
       )}
 
