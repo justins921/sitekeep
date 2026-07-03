@@ -6,6 +6,12 @@ import { createClient as createSupabase } from "@/lib/supabase/server";
 import { normalizeUrl, slugify } from "@/lib/utils";
 import { SERVICE_TYPES, type ServiceType } from "@/lib/services";
 import { runService } from "@/lib/metrics";
+import {
+  countActiveDashboards,
+  getSubscription,
+  syncSubscriptionQuantity,
+  withinPlan,
+} from "@/lib/billing";
 
 export type ClientFormState = { error: string } | null;
 
@@ -74,6 +80,14 @@ export async function createClientAction(
   const supabase = await createSupabase();
   const agency_id = await requireAgencyId(supabase);
 
+  // Free-tier gate: a new client is created active only if it stays within the
+  // plan; otherwise it's created paused and the user is prompted to upgrade.
+  const [activeCount, sub] = await Promise.all([
+    countActiveDashboards(supabase, agency_id),
+    getSubscription(supabase, agency_id),
+  ]);
+  const is_active = withinPlan(activeCount + 1, sub?.status);
+
   const base = slugify(parsed.values.company_name) || "client";
   let newId: string | null = null;
 
@@ -83,7 +97,7 @@ export async function createClientAction(
     const slug = attempt === 0 ? base : `${base}-${randomSuffix()}`;
     const { data, error } = await supabase
       .from("clients")
-      .insert({ ...parsed.values, agency_id, slug })
+      .insert({ ...parsed.values, agency_id, slug, is_active })
       .select("id")
       .single();
 
@@ -98,8 +112,11 @@ export async function createClientAction(
 
   if (!newId) return { error: "Could not generate a unique link. Try again." };
 
+  if (is_active) await syncSubscriptionQuantity(supabase, agency_id);
+
   revalidatePath("/dashboard");
-  redirect(`/dashboard/clients/${newId}`);
+  // ?gated=1 tells the detail page to show an upgrade prompt for the paused client.
+  redirect(`/dashboard/clients/${newId}${is_active ? "" : "?gated=1"}`);
 }
 
 export async function updateClientAction(
@@ -113,6 +130,25 @@ export async function updateClientAction(
   const is_active = formData.get("is_active") === "on";
 
   const supabase = await createSupabase();
+  const agencyId = await requireAgencyId(supabase);
+
+  // Free-tier gate: block activating beyond the free limit without a subscription.
+  if (is_active) {
+    const { count: otherActive } = await supabase
+      .from("clients")
+      .select("id", { count: "exact", head: true })
+      .eq("agency_id", agencyId)
+      .eq("is_active", true)
+      .neq("id", clientId);
+    const sub = await getSubscription(supabase, agencyId);
+    if (!withinPlan((otherActive ?? 0) + 1, sub?.status)) {
+      return {
+        error:
+          "You're on the free tier (1 active dashboard). Subscribe in Billing to activate more.",
+      };
+    }
+  }
+
   // RLS scopes the update to the owning agency; a non-owned id updates 0 rows.
   const { error } = await supabase
     .from("clients")
@@ -121,6 +157,7 @@ export async function updateClientAction(
 
   if (error) return { error: error.message };
 
+  await syncSubscriptionQuantity(supabase, agencyId);
   revalidatePath("/dashboard");
   revalidatePath(`/dashboard/clients/${clientId}`);
   redirect(`/dashboard/clients/${clientId}`);
@@ -128,8 +165,11 @@ export async function updateClientAction(
 
 export async function deleteClientAction(clientId: string): Promise<void> {
   const supabase = await createSupabase();
+  const agencyId = await requireAgencyId(supabase);
   // RLS ensures only the owner can delete; cascades remove services/metrics.
   await supabase.from("clients").delete().eq("id", clientId);
+  // Active-dashboard count may have dropped — keep Stripe quantity in step.
+  await syncSubscriptionQuantity(supabase, agencyId);
   revalidatePath("/dashboard");
   redirect("/dashboard");
 }

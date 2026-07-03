@@ -11,9 +11,9 @@ export async function proxy(request: NextRequest) {
 export const config = {
   matcher: [
     /*
-     * Run on all paths except static assets and images so the auth session
-     * cookie is refreshed on every navigation.
+     * Run on all paths except static assets, images, and the Stripe webhook
+     * (which must receive its raw, untouched body for signature verification).
      */
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|api/stripe/webhook|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

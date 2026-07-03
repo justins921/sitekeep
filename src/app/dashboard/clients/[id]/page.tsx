@@ -11,10 +11,13 @@ import { RefreshButton } from "./RefreshButton";
 
 export default async function ClientDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ gated?: string }>;
 }) {
   const { id } = await params;
+  const { gated } = await searchParams;
   const { client, services } = await getClientWithServices(id);
   const snapshots = await getLatestSnapshots(id);
 
@@ -23,11 +26,25 @@ export default async function ClientDetailPage({
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
   const publicUrl = `${siteUrl}/d/${client.slug}`;
 
+  const showGate = gated === "1" && !client.is_active;
+
   return (
     <div>
       <Link href="/dashboard" className="text-sm font-medium text-muted hover:text-ink">
         ← Clients
       </Link>
+
+      {showGate && (
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-card)] border border-brand-100 bg-brand-50 px-5 py-4">
+          <p className="text-sm text-ink">
+            This dashboard is <strong>paused</strong> — the free tier includes 1
+            active dashboard. Subscribe to activate it.
+          </p>
+          <ButtonLink href="/dashboard/billing" size="sm">
+            Upgrade
+          </ButtonLink>
+        </div>
+      )}
 
       <div className="mt-3 flex flex-wrap items-start justify-between gap-4">
         <div>
