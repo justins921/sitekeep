@@ -10,6 +10,7 @@ import {
 } from "@/components/metrics/MetricCards";
 import { timeAgo } from "@/components/metrics/format";
 import { normalizeHex, readableText, safeAccent, withAlpha } from "@/lib/color";
+import { RequestChangeForm } from "./RequestChangeForm";
 
 type PublicDashboard = {
   client: { company_name: string; website_url: string; logo_url: string | null };
@@ -146,6 +147,22 @@ export default async function PublicDashboardPage({
             </div>
           </div>
         )}
+
+        {/* Request a change */}
+        <div
+          className="mt-10 border-t-2 pt-6"
+          style={{ borderColor: withAlpha(brand, 0.25) }}
+        >
+          <h3 className="text-lg font-bold text-ink" style={{ color: accent }}>
+            Request a change
+          </h3>
+          <p className="mt-1 text-sm text-muted">
+            Need something updated? Send it straight to the team maintaining this site.
+          </p>
+          <div className="mt-4">
+            <RequestChangeForm slug={slug} accent={accent} />
+          </div>
+        </div>
 
         {/* Agency footer — no SiteKeep branding */}
         <footer className="mt-14 border-t border-line pt-6 text-center">

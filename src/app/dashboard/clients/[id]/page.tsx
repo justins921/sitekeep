@@ -15,7 +15,9 @@ import { CopyLinkButton } from "./CopyLinkButton";
 import { RefreshButton } from "./RefreshButton";
 import { getSubscription, isEntitled } from "@/lib/billing";
 import { ReportSettings } from "./ReportSettings";
+import { RequestBoard } from "./RequestBoard";
 import { startClientCheckoutAction, confirmActivateAction } from "../actions";
+import type { ClientRequest } from "@/lib/requests";
 
 // PageSpeed Insights can take 10–20s; give the refresh Server Action (which
 // runs in this route's function) room beyond the default timeout.
@@ -39,20 +41,26 @@ export default async function ClientDetailPage({
   const snapshots = await getLatestSnapshots(id);
 
   const supabase = await createClient();
-  const [{ data: report }, sub, { data: incidents }] = await Promise.all([
-    supabase
-      .from("reports")
-      .select("enabled, send_day, recipient_email, last_sent_at")
-      .eq("client_id", id)
-      .maybeSingle(),
-    getSubscription(supabase, client.agency_id),
-    supabase
-      .from("incidents")
-      .select("type, started_at, resolved_at, details")
-      .eq("client_id", id)
-      .order("started_at", { ascending: false })
-      .limit(10),
-  ]);
+  const [{ data: report }, sub, { data: incidents }, { data: requests }] =
+    await Promise.all([
+      supabase
+        .from("reports")
+        .select("enabled, send_day, recipient_email, last_sent_at")
+        .eq("client_id", id)
+        .maybeSingle(),
+      getSubscription(supabase, client.agency_id),
+      supabase
+        .from("incidents")
+        .select("type, started_at, resolved_at, details")
+        .eq("client_id", id)
+        .order("started_at", { ascending: false })
+        .limit(10),
+      supabase
+        .from("client_requests")
+        .select("*")
+        .eq("client_id", id)
+        .order("created_at", { ascending: false }),
+    ]);
   const entitled = isEntitled(sub?.status);
 
   const enabledServices = SERVICE_TYPES.filter((t) => services[t]);
@@ -215,6 +223,18 @@ export default async function ClientDetailPage({
           </div>
         </div>
       )}
+
+      {/* Request board */}
+      <div className="mt-12">
+        <h2 className="text-xl font-bold tracking-tight">Requests</h2>
+        <p className="mt-1 text-sm text-muted">
+          Change requests submitted from this client&apos;s dashboard. Move them
+          along as you work.
+        </p>
+        <div className="mt-5">
+          <RequestBoard clientId={id} initial={(requests ?? []) as ClientRequest[]} />
+        </div>
+      </div>
 
       {/* Monthly report */}
       <div className="mt-12">
