@@ -11,6 +11,8 @@ export function SiteFooter() {
         </div>
         <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-muted">
           <Link href="/signup" className="hover:text-ink">Get started</Link>
+          <Link href="/terms" className="hover:text-ink">Terms</Link>
+          <Link href="/privacy" className="hover:text-ink">Privacy</Link>
           <a href="mailto:payton@sitekeep.com" className="hover:text-ink">
             payton@sitekeep.com
           </a>
