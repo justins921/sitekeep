@@ -9,6 +9,8 @@ import type {
 } from "@/lib/metrics/types";
 import { cls, ms, rate, secs } from "@/components/metrics/format";
 import { normalizeHex, readableText, safeAccent } from "@/lib/color";
+import { sparklineSvg } from "@/lib/sparkline";
+import { TREND_KEYS, TREND_META, type TrendSeries } from "@/lib/trends";
 
 // Email clients strip <style>/classes, so the report mirrors the dashboard's
 // metric cards with inline styles + table layout (the email-safe equivalent).
@@ -124,8 +126,38 @@ export type ReportEmailInput = {
     category: string | null;
     performed_at: string;
   }>;
+  trends: TrendSeries;
   periodLabel: string;
 };
+
+/** Static inline-SVG trend charts (email-safe; no scripts). */
+function trendsSection(trends: TrendSeries, services: ServiceType[]): string {
+  const cells = TREND_KEYS.filter(
+    (k) => services.includes(k) && (trends[k]?.length ?? 0) >= 2,
+  )
+    .map((k) => {
+      const meta = TREND_META[k];
+      const values = trends[k];
+      const latest = values[values.length - 1];
+      const svg = sparklineSvg(values, { color: meta.color, width: 160, height: 44 });
+      return `
+      <td style="padding:6px;" valign="top" width="33%">
+        <div style="border:1px solid ${LINE};border-radius:14px;padding:14px 16px;">
+          <div style="font:500 12px/1.2 Arial,sans-serif;color:${MUTED};">${meta.label}</div>
+          <div style="margin-top:4px;font:700 18px/1.1 Arial,sans-serif;color:${INK};">${latest.toFixed(meta.digits)}${meta.unit}</div>
+          <div style="margin-top:6px;">${svg ?? ""}</div>
+        </div>
+      </td>`;
+    })
+    .join("");
+
+  if (!cells) return "";
+  return `
+    <tr><td style="padding:20px 24px 0;">
+      <div style="font:700 16px Arial,sans-serif;color:${INK};">Trends</div>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:8px -6px 0;"><tr>${cells}</tr></table>
+    </td></tr>`;
+}
 
 function activitySection(activity: ReportEmailInput["activity"]): string {
   if (!activity || activity.length === 0) return "";
@@ -186,6 +218,7 @@ export function renderReportEmail(input: ReportEmailInput): {
           <div style="font:400 13px Arial,sans-serif;color:${MUTED};margin-top:6px;">Maintenance report · ${input.periodLabel}</div>
         </td></tr>
         ${sections}
+        ${trendsSection(input.trends, input.services)}
         ${activitySection(input.activity)}
         <tr><td style="padding:24px;">
           <div style="border-top:1px solid ${LINE};padding-top:16px;text-align:center;font:500 12px Arial,sans-serif;color:${BODY};">

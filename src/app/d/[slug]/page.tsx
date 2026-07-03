@@ -8,6 +8,8 @@ import {
   IncidentList,
   type IncidentEntry,
 } from "@/components/metrics/MetricCards";
+import { TrendCharts } from "@/components/metrics/TrendCharts";
+import { TREND_KEYS, emptyTrends, type TrendSeries } from "@/lib/trends";
 import { timeAgo } from "@/components/metrics/format";
 import { normalizeHex, readableText, safeAccent, withAlpha } from "@/lib/color";
 import { RequestChangeForm } from "./RequestChangeForm";
@@ -25,6 +27,7 @@ type PublicDashboard = {
     category: string | null;
     performed_at: string;
   }[];
+  trends: TrendSeries;
 };
 
 async function loadDashboard(slug: string): Promise<PublicDashboard | null> {
@@ -138,6 +141,29 @@ export default async function PublicDashboardPage({
             ))
           )}
         </div>
+
+        {/* Trends */}
+        {(() => {
+          const show = TREND_KEYS.filter((k) => dash.services.includes(k));
+          if (show.length === 0) return null;
+          return (
+            <div
+              className="mt-10 border-t-2 pt-6"
+              style={{ borderColor: withAlpha(brand, 0.25) }}
+            >
+              <h3 className="text-lg font-bold text-ink" style={{ color: accent }}>
+                Trends
+              </h3>
+              <div className="mt-4">
+                <TrendCharts
+                  trends={dash.trends ?? emptyTrends()}
+                  show={show}
+                  accentColor={accent}
+                />
+              </div>
+            </div>
+          );
+        })()}
 
         {/* What we've done (activity log) */}
         {dash.activity.length > 0 && (

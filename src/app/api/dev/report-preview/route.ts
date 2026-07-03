@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { renderReportEmail } from "@/lib/report-email";
 import { periodLabel } from "@/lib/report-runner";
 import type { ServiceType } from "@/lib/services";
+import { emptyTrends, type TrendSeries } from "@/lib/trends";
 
 export const runtime = "nodejs";
 
@@ -17,6 +18,7 @@ type PublicDashboard = {
     category: string | null;
     performed_at: string;
   }>;
+  trends: TrendSeries;
 };
 
 /**
@@ -44,6 +46,7 @@ export async function GET(req: NextRequest) {
     services: dash.services,
     metrics: dash.metrics,
     activity: dash.activity ?? [],
+    trends: dash.trends ?? emptyTrends(),
     periodLabel: periodLabel("monthly", new Date()),
   });
 

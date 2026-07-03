@@ -8,6 +8,8 @@ import {
   IncidentList,
   type IncidentEntry,
 } from "@/components/metrics/MetricCards";
+import { TrendCharts } from "@/components/metrics/TrendCharts";
+import { getTrendSeries, TREND_KEYS } from "@/lib/trends";
 import { createClient } from "@/lib/supabase/server";
 import { ServiceToggles } from "./ServiceToggles";
 import { TrafficSettings } from "./TrafficSettings";
@@ -86,6 +88,9 @@ export default async function ClientDetailPage({
   const entitled = isEntitled(sub?.status);
 
   const enabledServices = SERVICE_TYPES.filter((t) => services[t]);
+
+  const trends = await getTrendSeries(supabase, id);
+  const trendKeys = TREND_KEYS.filter((k) => services[k]);
 
   // Traffic (GA4) settings state for the detail-page field.
   const ga4PropertyId =
@@ -251,6 +256,20 @@ export default async function ClientDetailPage({
           </div>
         )}
       </div>
+
+      {/* Trends */}
+      {trendKeys.length > 0 && (
+        <div className="mt-12">
+          <h2 className="text-xl font-bold tracking-tight">Trends</h2>
+          <p className="mt-1 text-sm text-muted">
+            History across refreshes. Charts appear once there are at least two
+            data points.
+          </p>
+          <div className="mt-5">
+            <TrendCharts trends={trends} show={trendKeys} />
+          </div>
+        </div>
+      )}
 
       {/* Incident log (uptime service) */}
       {services.uptime && (

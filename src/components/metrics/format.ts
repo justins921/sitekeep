@@ -32,10 +32,12 @@ export function scoreAccent(score: number | null): string {
   return "text-accent-magenta";
 }
 
-export const ms = (v: number | null) => (v === null ? "—" : `${v}`);
-export const secs = (v: number | null) =>
-  v === null ? "—" : (v / 1000).toFixed(v < 1000 ? 2 : 1);
-export const cls = (v: number | null) => (v === null ? "—" : v.toFixed(2));
+// `== null` intentionally covers both null and undefined (a snapshot may omit a
+// field), so we never call a numeric method on undefined.
+export const ms = (v: number | null | undefined) => (v == null ? "—" : `${v}`);
+export const secs = (v: number | null | undefined) =>
+  v == null ? "—" : (v / 1000).toFixed(v < 1000 ? 2 : 1);
+export const cls = (v: number | null | undefined) => (v == null ? "—" : v.toFixed(2));
 
 /** Compact relative time, e.g. "just now", "3m ago", "2h ago", "5d ago". */
 export function timeAgo(iso: string): string {

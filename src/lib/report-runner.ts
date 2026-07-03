@@ -2,6 +2,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { isReportDue, type ReportRow } from "./reports";
 import { renderReportEmail, type ReportEmailInput } from "./report-email";
+import { getTrendSeries } from "./trends";
 import { sendEmail } from "./email";
 import type { ServiceType } from "./services";
 
@@ -67,12 +68,15 @@ export async function buildReportEmail(
     .gte("performed_at", periodStart)
     .order("performed_at", { ascending: false });
 
+  const trends = await getTrendSeries(supabase, report.client_id);
+
   return renderReportEmail({
     agency,
     client,
     services,
     metrics,
     activity: (activityRows ?? []) as ReportEmailInput["activity"],
+    trends,
     periodLabel: periodLabel(report.cadence, now),
   });
 }
