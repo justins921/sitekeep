@@ -85,7 +85,7 @@ export function SettingsForm({
 
         <div className="space-y-1.5">
           <label htmlFor="alert_email" className="text-sm font-medium text-ink">
-            Alert email <span className="text-faint">(optional)</span>
+            Contact email <span className="text-faint">(optional)</span>
           </label>
           <input
             id="alert_email"
@@ -96,8 +96,9 @@ export function SettingsForm({
             className={inputClass}
           />
           <p className="text-xs text-muted">
-            Where downtime &amp; SSL-expiry alerts are sent. Defaults to your
-            login email ({ownerEmail}).
+            Where downtime &amp; SSL alerts are sent, and the <strong>reply-to</strong>{" "}
+            on client report emails — so when a client replies to a report, it
+            comes straight to you. Defaults to your login email ({ownerEmail}).
           </p>
         </div>
 

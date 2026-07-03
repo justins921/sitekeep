@@ -35,10 +35,23 @@ export async function buildReportEmail(
 
   const { data: agency } = await supabase
     .from("agencies")
-    .select("name, brand_color, logo_url")
+    .select("name, brand_color, logo_url, alert_email, owner_id")
     .eq("id", client.agency_id)
     .single();
   if (!agency) return null;
+
+  // White-label reply-to: the agency's contact email, falling back to the
+  // owner's login email (best-effort; only resolvable with the service-role
+  // client, which the cron uses). Client replies go here, not to SiteKeep.
+  let replyTo: string | null = agency.alert_email ?? null;
+  if (!replyTo) {
+    try {
+      const { data } = await supabase.auth.admin.getUserById(agency.owner_id as string);
+      replyTo = data.user?.email ?? null;
+    } catch {
+      replyTo = null;
+    }
+  }
 
   const { data: svcRows } = await supabase
     .from("client_services")
@@ -70,7 +83,7 @@ export async function buildReportEmail(
 
   const trends = await getTrendSeries(supabase, report.client_id);
 
-  return renderReportEmail({
+  const rendered = renderReportEmail({
     agency,
     client,
     services,
@@ -79,6 +92,8 @@ export async function buildReportEmail(
     trends,
     periodLabel: periodLabel(report.cadence, now),
   });
+  // fromName = the agency, so the client sees them as the sender.
+  return { ...rendered, fromName: agency.name as string, replyTo };
 }
 
 /**
@@ -108,7 +123,13 @@ export async function runDueReports(
         continue;
       }
 
-      const res = await sendEmail({ to: recipient, subject: email.subject, html: email.html });
+      const res = await sendEmail({
+        to: recipient,
+        subject: email.subject,
+        html: email.html,
+        fromName: email.fromName,
+        replyTo: email.replyTo,
+      });
       if (res.ok) {
         await supabase
           .from("reports")

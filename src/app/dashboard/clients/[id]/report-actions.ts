@@ -74,6 +74,8 @@ export async function sendTestReportAction(
       to: recipient,
       subject: `[Test] ${email.subject}`,
       html: email.html,
+      fromName: email.fromName,
+      replyTo: email.replyTo,
     });
     if (!res.ok) return { status: "error", error: res.error };
     return { status: res.skipped ? "skipped" : "sent" };
