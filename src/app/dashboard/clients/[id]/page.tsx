@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Badge, ButtonLink, Card } from "@/components/ui";
+import { Badge, Button, ButtonLink, Card } from "@/components/ui";
 import { getClientWithServices } from "@/lib/clients";
 import { getLatestSnapshots } from "@/lib/metrics";
 import { SERVICE_TYPES } from "@/lib/services";
@@ -10,6 +10,7 @@ import { DeleteClientButton } from "./DeleteClientButton";
 import { CopyLinkButton } from "./CopyLinkButton";
 import { RefreshButton } from "./RefreshButton";
 import { ReportSettings } from "./ReportSettings";
+import { startClientCheckoutAction } from "../actions";
 
 // PageSpeed Insights can take 10–20s; give the refresh Server Action (which
 // runs in this route's function) room beyond the default timeout.
@@ -20,10 +21,10 @@ export default async function ClientDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ gated?: string }>;
+  searchParams: Promise<{ gated?: string; subscribed?: string; checkout?: string }>;
 }) {
   const { id } = await params;
-  const { gated } = await searchParams;
+  const { gated, subscribed, checkout } = await searchParams;
   const { client, services } = await getClientWithServices(id);
   const snapshots = await getLatestSnapshots(id);
 
@@ -39,7 +40,7 @@ export default async function ClientDetailPage({
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
   const publicUrl = `${siteUrl}/d/${client.slug}`;
 
-  const showGate = gated === "1" && !client.is_active;
+  const showGate = (gated === "1" || checkout === "cancel") && !client.is_active;
 
   return (
     <div>
@@ -50,12 +51,20 @@ export default async function ClientDetailPage({
       {showGate && (
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-card)] border border-brand-100 bg-brand-50 px-5 py-4">
           <p className="text-sm text-ink">
-            This dashboard is <strong>paused</strong> — the free tier includes 1
-            active dashboard. Subscribe to activate it.
+            This dashboard is <strong>paused</strong> — your first dashboard is
+            free; activating this one is $3/mo.
           </p>
-          <ButtonLink href="/dashboard/billing" size="sm">
-            Upgrade
-          </ButtonLink>
+          <form action={startClientCheckoutAction.bind(null, id)}>
+            <Button type="submit" size="sm">
+              Subscribe to activate
+            </Button>
+          </form>
+        </div>
+      )}
+
+      {subscribed === "1" && client.is_active && (
+        <div className="mt-4 rounded-[var(--radius-card)] border border-green-100 bg-fill-green px-5 py-4 text-sm text-accent-green">
+          Payment received — this dashboard is now active.
         </div>
       )}
 

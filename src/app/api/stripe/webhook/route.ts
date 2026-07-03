@@ -71,6 +71,16 @@ export async function POST(req: NextRequest) {
             session.subscription as string,
           );
           await updateByAgency(agencyId, subFields(sub));
+
+          // Activate the dashboard the agency was paying to unlock.
+          const pendingClientId = sub.metadata?.pending_client_id;
+          if (pendingClientId) {
+            await admin
+              .from("clients")
+              .update({ is_active: true })
+              .eq("id", pendingClientId)
+              .eq("agency_id", agencyId);
+          }
         }
         break;
       }

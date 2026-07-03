@@ -1,6 +1,13 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { getStripe } from "./stripe";
+import { getStripe, getPriceId } from "./stripe";
+
+/** First paid month is free, matching the landing page's "1 month free trial". */
+export const TRIAL_DAYS = 30;
+
+function siteUrl() {
+  return process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+}
 
 export type SubscriptionRow = {
   agency_id: string;
@@ -77,6 +84,61 @@ export async function syncSubscriptionQuantity(
 
   await stripe.subscriptions.update(sub.stripe_subscription_id, {
     items: [{ id: item.id, quantity: Math.max(activeCount, 1) }],
-    proration_behavior: "create_prorations",
+    // Full price per dashboard — no prorated partial charges.
+    proration_behavior: "none",
   });
+}
+
+/**
+ * Create a Stripe Checkout session for a subscription covering `quantity`
+ * dashboards, with a 30-day free trial. When `pendingClientId` is set, the
+ * webhook activates that client on payment and Checkout returns to it.
+ */
+export async function createCheckoutUrl(
+  supabase: SupabaseClient,
+  agencyId: string,
+  email: string | undefined,
+  opts: { quantity: number; pendingClientId?: string },
+): Promise<{ url: string } | { error: string }> {
+  const priceId = getPriceId();
+  if (!priceId) {
+    return { error: "Billing isn't configured yet. Add a price ID to continue." };
+  }
+
+  const sub = await getSubscription(supabase, agencyId);
+  const stripe = getStripe();
+
+  const successPath = opts.pendingClientId
+    ? `/dashboard/clients/${opts.pendingClientId}?subscribed=1`
+    : `/dashboard/billing?checkout=success`;
+  const cancelPath = opts.pendingClientId
+    ? `/dashboard/clients/${opts.pendingClientId}?checkout=cancel`
+    : `/dashboard/billing?checkout=cancel`;
+
+  try {
+    const session = await stripe.checkout.sessions.create({
+      mode: "subscription",
+      line_items: [{ price: priceId, quantity: Math.max(opts.quantity, 1) }],
+      client_reference_id: agencyId,
+      ...(sub?.stripe_customer_id
+        ? { customer: sub.stripe_customer_id }
+        : { customer_email: email }),
+      subscription_data: {
+        trial_period_days: TRIAL_DAYS,
+        metadata: {
+          agency_id: agencyId,
+          ...(opts.pendingClientId
+            ? { pending_client_id: opts.pendingClientId }
+            : {}),
+        },
+      },
+      allow_promotion_codes: true,
+      success_url: `${siteUrl()}${successPath}`,
+      cancel_url: `${siteUrl()}${cancelPath}`,
+    });
+    if (!session.url) return { error: "Could not start checkout." };
+    return { url: session.url };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Checkout failed." };
+  }
 }
