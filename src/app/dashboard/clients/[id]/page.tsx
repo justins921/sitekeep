@@ -4,10 +4,12 @@ import { getClientWithServices } from "@/lib/clients";
 import { getLatestSnapshots } from "@/lib/metrics";
 import { SERVICE_TYPES } from "@/lib/services";
 import { ServiceMetricBlock } from "@/components/metrics/MetricCards";
+import { createClient } from "@/lib/supabase/server";
 import { ServiceToggles } from "./ServiceToggles";
 import { DeleteClientButton } from "./DeleteClientButton";
 import { CopyLinkButton } from "./CopyLinkButton";
 import { RefreshButton } from "./RefreshButton";
+import { ReportSettings } from "./ReportSettings";
 
 export default async function ClientDetailPage({
   params,
@@ -20,6 +22,13 @@ export default async function ClientDetailPage({
   const { gated } = await searchParams;
   const { client, services } = await getClientWithServices(id);
   const snapshots = await getLatestSnapshots(id);
+
+  const supabase = await createClient();
+  const { data: report } = await supabase
+    .from("reports")
+    .select("enabled, send_day, recipient_email, last_sent_at")
+    .eq("client_id", id)
+    .maybeSingle();
 
   const enabledServices = SERVICE_TYPES.filter((t) => services[t]);
 
@@ -141,6 +150,25 @@ export default async function ClientDetailPage({
             ))}
           </div>
         )}
+      </div>
+
+      {/* Monthly report */}
+      <div className="mt-12">
+        <h2 className="text-xl font-bold tracking-tight">Monthly report</h2>
+        <p className="mt-1 text-sm text-muted">
+          Automatically email this dashboard to the client each month.
+        </p>
+        <Card className="mt-5 p-6">
+          <ReportSettings
+            clientId={id}
+            defaults={{
+              enabled: report?.enabled ?? false,
+              send_day: report?.send_day ?? 1,
+              recipient_email: report?.recipient_email ?? client.contact_email,
+              last_sent_at: report?.last_sent_at ?? null,
+            }}
+          />
+        </Card>
       </div>
     </div>
   );
