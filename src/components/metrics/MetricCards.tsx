@@ -161,10 +161,12 @@ export function ServiceMetricBlock({
   type,
   data,
   capturedAt,
+  accentColor,
 }: {
   type: ServiceType;
   data: unknown;
   capturedAt?: string;
+  accentColor?: string;
 }) {
   const meta = SERVICE_META[type];
   const isDemo = type === "traffic" && Boolean((data as TrafficData | null)?.demo);
@@ -173,7 +175,9 @@ export function ServiceMetricBlock({
     <section>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <h3 className="text-lg font-bold text-ink">{meta.label}</h3>
+          <h3 className="text-lg font-bold text-ink" style={accentColor ? { color: accentColor } : undefined}>
+            {meta.label}
+          </h3>
           {isDemo && <Badge tone="orange">Demo data</Badge>}
         </div>
         {capturedAt && (
