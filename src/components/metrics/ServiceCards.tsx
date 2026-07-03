@@ -130,11 +130,21 @@ export function PageSpeedCard({
       ) : (
         <>
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-            {cats.map(([key, label]) => (
-              <div key={key} className="flex justify-center">
-                <Gauge score={s.categories[key]} label={label} />
-              </div>
-            ))}
+            {cats.map(([key, label]) =>
+              s.categories[key] === null ? (
+                <div key={key} className="flex flex-col items-center">
+                  <div className="flex h-[104px] w-[104px] flex-col items-center justify-center rounded-full border border-dashed border-line text-center">
+                    <span className="text-lg font-bold text-faint">—</span>
+                    <span className="mt-0.5 text-[10px] text-faint">awaiting</span>
+                  </div>
+                  <span className="mt-1.5 text-xs font-medium text-muted">{label}</span>
+                </div>
+              ) : (
+                <div key={key} className="flex justify-center">
+                  <Gauge score={s.categories[key]} label={label} />
+                </div>
+              ),
+            )}
           </div>
           <div className="mt-5 flex justify-center">
             <GaugeLegend />
@@ -198,13 +208,15 @@ function Tile({
   value: string;
   delta?: TrafficDelta;
 }) {
+  const empty = value === "—";
   return (
     <div className="rounded-xl border border-line p-4">
       <p className="text-xs font-medium text-muted">{label}</p>
       <div className="mt-1.5 flex items-baseline justify-between gap-2">
-        <span className="text-2xl font-bold text-ink">{value}</span>
-        <DeltaTag delta={delta} />
+        <span className={"text-2xl font-bold " + (empty ? "text-faint" : "text-ink")}>{value}</span>
+        {!empty && <DeltaTag delta={delta} />}
       </div>
+      {empty && <p className="mt-0.5 text-[11px] text-faint">awaiting data</p>}
     </div>
   );
 }
@@ -238,17 +250,17 @@ export function TrafficCard({
         <Tile label="Users" value={data.users.toLocaleString()} delta={data.deltas?.users} />
         <Tile
           label="New users"
-          value={(data.new_users ?? 0).toLocaleString()}
+          value={data.new_users === undefined ? "—" : data.new_users.toLocaleString()}
           delta={data.deltas?.new_users}
         />
         <Tile
           label="Engagement rate"
-          value={`${(data.engagement_rate ?? 0).toFixed(1)}%`}
+          value={data.engagement_rate === undefined ? "—" : `${data.engagement_rate.toFixed(1)}%`}
           delta={data.deltas?.engagement_rate}
         />
         <Tile
           label="Avg engagement"
-          value={fmtDuration(data.avg_engagement_time ?? 0)}
+          value={data.avg_engagement_time === undefined ? "—" : fmtDuration(data.avg_engagement_time)}
           delta={data.deltas?.avg_engagement_time}
         />
       </div>
