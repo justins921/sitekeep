@@ -35,9 +35,17 @@ export async function sendEmail(opts: {
       subject: opts.subject,
       html: opts.html,
     });
-    if (error) return { ok: false, error: error.message };
+    if (error) {
+      // Surfaced in the UI, but also log so email problems (unverified sender,
+      // sandbox recipient limits) are visible in the runtime logs.
+      console.error(`[email] Resend rejected send from "${from}" to ${opts.to}: ${error.message}`);
+      return { ok: false, error: error.message };
+    }
+    console.info(`[email] sent to ${opts.to} from "${from}" (id ${data?.id ?? "?"})`);
     return { ok: true, id: data?.id ?? null };
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : "send failed" };
+    const msg = err instanceof Error ? err.message : "send failed";
+    console.error(`[email] send threw for ${opts.to}: ${msg}`);
+    return { ok: false, error: msg };
   }
 }

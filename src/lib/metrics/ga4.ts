@@ -191,6 +191,11 @@ const isoDate = (yyyymmdd: string) =>
     ? `${yyyymmdd.slice(0, 4)}-${yyyymmdd.slice(4, 6)}-${yyyymmdd.slice(6, 8)}`
     : yyyymmdd;
 
+const yyyymmdd = (ms: number): string => {
+  const d = new Date(ms);
+  return `${d.getUTCFullYear()}${String(d.getUTCMonth() + 1).padStart(2, "0")}${String(d.getUTCDate()).padStart(2, "0")}`;
+};
+
 /**
  * Two reports over the trailing `rangeDays` window AND the equal preceding
  * window: (1) period totals for engagement + user/session metrics (accurate
@@ -217,7 +222,10 @@ export async function runGa4Report(
       metrics: TOTAL_METRICS.map((name) => ({ name })),
     }),
     ga4Fetch(propertyId, token, {
-      dateRanges,
+      // ONE range over the full 2×window + date dimension. Using two date ranges
+      // here makes GA4 emit every date for BOTH ranges, so we split by date
+      // against the cutoff instead — clean current vs preceding series.
+      dateRanges: [{ startDate: `${rangeDays * 2}daysAgo`, endDate: "yesterday" }],
       dimensions: [{ name: "date" }],
       metrics: SERIES_METRICS.map((name) => ({ name })),
       orderBys: [{ dimension: { dimensionName: "date" } }],
@@ -253,10 +261,10 @@ export async function runGa4Report(
     else current = readMetrics(row);
   }
 
-  // ---- daily series (dimensions: date + dateRange) ----
+  // ---- daily series: split the single-range rows by date against the cutoff ----
   const sNames = (series.metricHeaders ?? []).map((h) => h.name);
   const sDate = (series.dimensionHeaders ?? []).findIndex((h) => h.name === "date");
-  const sDr = (series.dimensionHeaders ?? []).findIndex((h) => h.name === "dateRange");
+  const cutoff = yyyymmdd(now - rangeDays * 86_400_000); // YYYYMMDD; ≥ cutoff = current
   const daily: Ga4DayPoint[] = [];
   const dailyPrev: Ga4DayPoint[] = [];
   const metric = (row: NonNullable<RunReportResponse["rows"]>[number], name: string) => {
@@ -265,15 +273,14 @@ export async function runGa4Report(
     return Number.isFinite(n) ? n : 0;
   };
   for (const row of series.rows ?? []) {
-    const date = isoDate(sDate >= 0 ? row.dimensionValues?.[sDate]?.value ?? "" : "");
-    const tag = sDr >= 0 ? row.dimensionValues?.[sDr]?.value : "date_range_0";
+    const raw = sDate >= 0 ? row.dimensionValues?.[sDate]?.value ?? "" : "";
     const point: Ga4DayPoint = {
-      date,
+      date: isoDate(raw),
       users: metric(row, "activeUsers"),
       newUsers: metric(row, "newUsers"),
       sessions: metric(row, "sessions"),
     };
-    (tag === "date_range_1" ? dailyPrev : daily).push(point);
+    (raw >= cutoff ? daily : dailyPrev).push(point);
   }
   daily.sort((a, b) => a.date.localeCompare(b.date));
   dailyPrev.sort((a, b) => a.date.localeCompare(b.date));
