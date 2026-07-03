@@ -11,6 +11,10 @@ import { CopyLinkButton } from "./CopyLinkButton";
 import { RefreshButton } from "./RefreshButton";
 import { ReportSettings } from "./ReportSettings";
 
+// PageSpeed Insights can take 10–20s; give the refresh Server Action (which
+// runs in this route's function) room beyond the default timeout.
+export const maxDuration = 60;
+
 export default async function ClientDetailPage({
   params,
   searchParams,

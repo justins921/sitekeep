@@ -5,6 +5,8 @@ import { runDueReports } from "@/lib/report-runner";
 export const runtime = "nodejs";
 // Belt-and-suspenders: never cache this route.
 export const dynamic = "force-dynamic";
+// Rendering + sending several reports can take a while.
+export const maxDuration = 60;
 
 /**
  * Daily cron (see vercel.json). Protected by CRON_SECRET so it cannot be
