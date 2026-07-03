@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { runDueReports } from "@/lib/report-runner";
+import { reconcileTrials } from "@/lib/billing";
 
 export const runtime = "nodejs";
 // Belt-and-suspenders: never cache this route.
@@ -23,6 +24,9 @@ export async function GET(req: NextRequest) {
   }
 
   const admin = createAdminClient();
-  const result = await runDueReports(admin, new Date());
-  return NextResponse.json(result);
+  const now = new Date();
+  // Flip first dashboards from free→paid at day 30 and keep quantities in step.
+  const billing = await reconcileTrials(admin, now);
+  const reports = await runDueReports(admin, now);
+  return NextResponse.json({ billing, reports });
 }

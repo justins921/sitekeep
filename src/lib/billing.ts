@@ -2,7 +2,12 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getStripe, getPriceId } from "./stripe";
 
-/** First paid month is free, matching the landing page's "1 month free trial". */
+/**
+ * Each agency's FIRST dashboard is free for its first 30 days (tracked here in
+ * the app, NOT as a Stripe trial). After that it becomes a paid seat like any
+ * other. Every dashboard beyond the free one is a paid $3/mo seat billed
+ * immediately — so Stripe only ever sees "paid seats", charged right away.
+ */
 export const TRIAL_DAYS = 30;
 
 function siteUrl() {
@@ -18,9 +23,28 @@ export type SubscriptionRow = {
   current_period_end: string | null;
 };
 
-/** Statuses that entitle an agency to activate more than the free dashboard. */
+/** Statuses that mean the agency currently has a paid subscription. */
 export function isEntitled(status: string | null | undefined): boolean {
   return status === "active" || status === "trialing";
+}
+
+/** 1 free dashboard while inside the 30-day window, otherwise 0. */
+export function freeAllowance(
+  agencyCreatedAt: string | null | undefined,
+  now: Date = new Date(),
+): number {
+  if (!agencyCreatedAt) return 0;
+  const end = new Date(agencyCreatedAt).getTime() + TRIAL_DAYS * 86_400_000;
+  return now.getTime() < end ? 1 : 0;
+}
+
+/** How many dashboards must be paid for = active minus the free allowance. */
+export function paidSeatsFor(
+  activeCount: number,
+  agencyCreatedAt: string | null | undefined,
+  now?: Date,
+): number {
+  return Math.max(0, activeCount - freeAllowance(agencyCreatedAt, now));
 }
 
 export async function getSubscription(
@@ -37,6 +61,18 @@ export async function getSubscription(
   return (data as SubscriptionRow) ?? null;
 }
 
+export async function getAgencyCreatedAt(
+  supabase: SupabaseClient,
+  agencyId: string,
+): Promise<string | null> {
+  const { data } = await supabase
+    .from("agencies")
+    .select("created_at")
+    .eq("id", agencyId)
+    .maybeSingle();
+  return (data?.created_at as string | undefined) ?? null;
+}
+
 export async function countActiveDashboards(
   supabase: SupabaseClient,
   agencyId: string,
@@ -49,49 +85,47 @@ export async function countActiveDashboards(
   return count ?? 0;
 }
 
-/** Free tier allows exactly one active dashboard. */
-export const FREE_ACTIVE_LIMIT = 1;
-
 /**
- * Whether the agency may have `desiredActiveCount` active dashboards: always if
- * within the free limit, otherwise only with an entitling subscription.
- */
-export function withinPlan(
-  desiredActiveCount: number,
-  status: string | null | undefined,
-): boolean {
-  return desiredActiveCount <= FREE_ACTIVE_LIMIT || isEntitled(status);
-}
-
-/**
- * Keep the Stripe subscription quantity in step with the number of active
- * dashboards. No-op when the agency has no entitling subscription. Runs in a
- * user-facing server action (Stripe API call only — no service-role DB write).
+ * Reconcile the Stripe subscription quantity with the number of PAID seats
+ * (active dashboards minus the free one). Adds/removes bill immediately; if the
+ * agency has no paid seats left, the subscription is cancelled. No-op without a
+ * subscription. Stripe API only — safe to call from a user action.
  */
 export async function syncSubscriptionQuantity(
   supabase: SupabaseClient,
   agencyId: string,
 ): Promise<void> {
   const sub = await getSubscription(supabase, agencyId);
-  if (!sub || !isEntitled(sub.status) || !sub.stripe_subscription_id) return;
+  if (!sub?.stripe_subscription_id) return;
 
-  const activeCount = await countActiveDashboards(supabase, agencyId);
+  const [createdAt, activeCount] = await Promise.all([
+    getAgencyCreatedAt(supabase, agencyId),
+    countActiveDashboards(supabase, agencyId),
+  ]);
+  const seats = paidSeatsFor(activeCount, createdAt);
   const stripe = getStripe();
+
+  if (seats <= 0) {
+    if (isEntitled(sub.status)) {
+      await stripe.subscriptions.cancel(sub.stripe_subscription_id);
+    }
+    return;
+  }
+
   const subscription = await stripe.subscriptions.retrieve(sub.stripe_subscription_id);
   const item = subscription.items.data[0];
-  if (!item) return;
-  if (item.quantity === activeCount) return;
+  if (!item || item.quantity === seats) return;
 
   await stripe.subscriptions.update(sub.stripe_subscription_id, {
-    items: [{ id: item.id, quantity: Math.max(activeCount, 1) }],
-    // Full price per dashboard — no prorated partial charges.
-    proration_behavior: "none",
+    items: [{ id: item.id, quantity: seats }],
+    // Bill the change immediately (each added dashboard is charged right away).
+    proration_behavior: "always_invoice",
   });
 }
 
 /**
- * Create a Stripe Checkout session for a subscription covering `quantity`
- * dashboards, with a 30-day free trial. When `pendingClientId` is set, the
+ * Checkout for `quantity` PAID seats, charged immediately (no Stripe trial —
+ * the free month is handled app-side). When `pendingClientId` is set, the
  * webhook activates that client on payment and Checkout returns to it.
  */
 export async function createCheckoutUrl(
@@ -124,7 +158,6 @@ export async function createCheckoutUrl(
         ? { customer: sub.stripe_customer_id }
         : { customer_email: email }),
       subscription_data: {
-        trial_period_days: TRIAL_DAYS,
         metadata: {
           agency_id: agencyId,
           ...(opts.pendingClientId
@@ -141,4 +174,51 @@ export async function createCheckoutUrl(
   } catch (err) {
     return { error: err instanceof Error ? err.message : "Checkout failed." };
   }
+}
+
+/**
+ * Daily reconciliation (cron): keep subscription quantities in step (this is
+ * what flips an agency's first dashboard from free to paid once its 30-day
+ * window ends), and pause dashboards for agencies that are past the free
+ * window with no subscription. Uses a service-role client.
+ */
+export async function reconcileTrials(
+  supabase: SupabaseClient,
+  now: Date = new Date(),
+): Promise<{ synced: number; paused: number }> {
+  let synced = 0;
+  let paused = 0;
+
+  const { data: subs } = await supabase
+    .from("subscriptions")
+    .select("agency_id, status, stripe_subscription_id")
+    .in("status", ["active", "trialing"]);
+  for (const s of subs ?? []) {
+    if (s.stripe_subscription_id) {
+      await syncSubscriptionQuantity(supabase, s.agency_id as string);
+      synced++;
+    }
+  }
+
+  const { data: agencies } = await supabase.from("agencies").select("id, created_at");
+  for (const a of agencies ?? []) {
+    if (freeAllowance(a.created_at as string, now) > 0) continue; // still free
+    const sub = await getSubscription(supabase, a.id as string);
+    if (isEntitled(sub?.status)) continue; // covered by a subscription
+    const { count } = await supabase
+      .from("clients")
+      .select("id", { count: "exact", head: true })
+      .eq("agency_id", a.id)
+      .eq("is_active", true);
+    if ((count ?? 0) > 0) {
+      await supabase
+        .from("clients")
+        .update({ is_active: false })
+        .eq("agency_id", a.id)
+        .eq("is_active", true);
+      paused += count ?? 0;
+    }
+  }
+
+  return { synced, paused };
 }

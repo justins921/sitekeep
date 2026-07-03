@@ -4,7 +4,6 @@ import {
   countActiveDashboards,
   getSubscription,
   isEntitled,
-  FREE_ACTIVE_LIMIT,
 } from "@/lib/billing";
 import { PRICE_DOLLARS, getPriceId } from "@/lib/stripe";
 import { Badge, Card, StatCard } from "@/components/ui";
@@ -47,7 +46,8 @@ export default async function BillingPage({
     <div>
       <h1 className="text-3xl font-bold tracking-tight">Billing</h1>
       <p className="mt-1 text-muted">
-        ${PRICE_DOLLARS} per active dashboard / month. Your first dashboard is free.
+        ${PRICE_DOLLARS} per active dashboard / month. Your first dashboard is
+        free for its first 30 days.
       </p>
 
       {checkout === "success" && (
@@ -83,7 +83,7 @@ export default async function BillingPage({
             <p className="mt-1 text-sm text-muted">
               {subscribed
                 ? `Renews ${periodEnd}. Quantity tracks your active dashboards.`
-                : `You can keep ${FREE_ACTIVE_LIMIT} dashboard active for free. Subscribe to activate more.`}
+                : `Your first dashboard is free for 30 days. Each additional dashboard is $${PRICE_DOLLARS}/mo, charged when you add it.`}
             </p>
           </div>
           <BillingButtons

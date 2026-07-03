@@ -6,7 +6,9 @@ import { getStripe } from "@/lib/stripe";
 import {
   countActiveDashboards,
   createCheckoutUrl,
+  getAgencyCreatedAt,
   getSubscription,
+  paidSeatsFor,
 } from "@/lib/billing";
 
 export type BillingActionResult = { url: string } | { error: string };
@@ -32,7 +34,11 @@ async function requireAgency() {
 
 export async function createCheckoutSession(): Promise<BillingActionResult> {
   const { supabase, agencyId, email } = await requireAgency();
-  const quantity = Math.max(await countActiveDashboards(supabase, agencyId), 1);
+  const [active, createdAt] = await Promise.all([
+    countActiveDashboards(supabase, agencyId),
+    getAgencyCreatedAt(supabase, agencyId),
+  ]);
+  const quantity = Math.max(paidSeatsFor(active, createdAt), 1);
   return createCheckoutUrl(supabase, agencyId, email, { quantity });
 }
 

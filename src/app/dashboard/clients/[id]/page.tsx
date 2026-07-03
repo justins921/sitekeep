@@ -9,8 +9,9 @@ import { ServiceToggles } from "./ServiceToggles";
 import { DeleteClientButton } from "./DeleteClientButton";
 import { CopyLinkButton } from "./CopyLinkButton";
 import { RefreshButton } from "./RefreshButton";
+import { getSubscription, isEntitled } from "@/lib/billing";
 import { ReportSettings } from "./ReportSettings";
-import { startClientCheckoutAction } from "../actions";
+import { startClientCheckoutAction, confirmActivateAction } from "../actions";
 
 // PageSpeed Insights can take 10–20s; give the refresh Server Action (which
 // runs in this route's function) room beyond the default timeout.
@@ -21,26 +22,39 @@ export default async function ClientDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ gated?: string; subscribed?: string; checkout?: string }>;
+  searchParams: Promise<{
+    gated?: string;
+    subscribed?: string;
+    checkout?: string;
+    confirm?: string;
+  }>;
 }) {
   const { id } = await params;
-  const { gated, subscribed, checkout } = await searchParams;
+  const { gated, subscribed, checkout, confirm } = await searchParams;
   const { client, services } = await getClientWithServices(id);
   const snapshots = await getLatestSnapshots(id);
 
   const supabase = await createClient();
-  const { data: report } = await supabase
-    .from("reports")
-    .select("enabled, send_day, recipient_email, last_sent_at")
-    .eq("client_id", id)
-    .maybeSingle();
+  const [{ data: report }, sub] = await Promise.all([
+    supabase
+      .from("reports")
+      .select("enabled, send_day, recipient_email, last_sent_at")
+      .eq("client_id", id)
+      .maybeSingle(),
+    getSubscription(supabase, client.agency_id),
+  ]);
+  const entitled = isEntitled(sub?.status);
 
   const enabledServices = SERVICE_TYPES.filter((t) => services[t]);
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
   const publicUrl = `${siteUrl}/d/${client.slug}`;
 
-  const showGate = (gated === "1" || checkout === "cancel") && !client.is_active;
+  // Paused client prompts: subscribers confirm the $3/mo charge; everyone else
+  // is routed to Checkout.
+  const showConfirm = confirm === "1" && !client.is_active && entitled;
+  const showGate =
+    (gated === "1" || checkout === "cancel") && !client.is_active && !entitled;
 
   return (
     <div>
@@ -48,11 +62,25 @@ export default async function ClientDetailPage({
         ← Clients
       </Link>
 
+      {showConfirm && (
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-card)] border border-brand-100 bg-brand-50 px-5 py-4">
+          <p className="text-sm text-ink">
+            Activating this dashboard adds <strong>$3/month</strong> to your
+            subscription, effective immediately.
+          </p>
+          <form action={confirmActivateAction.bind(null, id)}>
+            <Button type="submit" size="sm">
+              Confirm &amp; activate
+            </Button>
+          </form>
+        </div>
+      )}
+
       {showGate && (
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-card)] border border-brand-100 bg-brand-50 px-5 py-4">
           <p className="text-sm text-ink">
             This dashboard is <strong>paused</strong> — your first dashboard is
-            free; activating this one is $3/mo.
+            free for 30 days; activating this one is $3/mo.
           </p>
           <form action={startClientCheckoutAction.bind(null, id)}>
             <Button type="submit" size="sm">
