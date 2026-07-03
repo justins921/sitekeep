@@ -1,7 +1,7 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { isReportDue, type ReportRow } from "./reports";
-import { renderReportEmail } from "./report-email";
+import { renderReportEmail, type ReportEmailInput } from "./report-email";
 import { sendEmail } from "./email";
 import type { ServiceType } from "./services";
 
@@ -58,11 +58,21 @@ export async function buildReportEmail(
     if (!(t in metrics)) metrics[t] = s.data;
   }
 
+  // Work performed in the current period (trailing ~31 days).
+  const periodStart = new Date(now.getTime() - 31 * 86_400_000).toISOString();
+  const { data: activityRows } = await supabase
+    .from("activity_log")
+    .select("title, description, category, performed_at")
+    .eq("client_id", report.client_id)
+    .gte("performed_at", periodStart)
+    .order("performed_at", { ascending: false });
+
   return renderReportEmail({
     agency,
     client,
     services,
     metrics,
+    activity: (activityRows ?? []) as ReportEmailInput["activity"],
     periodLabel: periodLabel(report.cadence, now),
   });
 }

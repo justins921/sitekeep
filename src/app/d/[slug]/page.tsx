@@ -19,6 +19,12 @@ type PublicDashboard = {
   metrics: Partial<Record<ServiceType, unknown>>;
   updated: Partial<Record<ServiceType, string>>;
   incidents: IncidentEntry[];
+  activity: {
+    title: string;
+    description: string | null;
+    category: string | null;
+    performed_at: string;
+  }[];
 };
 
 async function loadDashboard(slug: string): Promise<PublicDashboard | null> {
@@ -132,6 +138,41 @@ export default async function PublicDashboardPage({
             ))
           )}
         </div>
+
+        {/* What we've done (activity log) */}
+        {dash.activity.length > 0 && (
+          <div
+            className="mt-10 border-t-2 pt-6"
+            style={{ borderColor: withAlpha(brand, 0.25) }}
+          >
+            <h3 className="text-lg font-bold text-ink" style={{ color: accent }}>
+              What we&apos;ve done
+            </h3>
+            <ul className="mt-4 space-y-4">
+              {dash.activity.map((a, i) => (
+                <li key={i} className="flex gap-3">
+                  <span
+                    className="mt-1.5 h-2 w-2 shrink-0 rounded-full"
+                    style={{ backgroundColor: accent }}
+                  />
+                  <div>
+                    <p className="text-sm font-semibold text-ink">{a.title}</p>
+                    {a.description && (
+                      <p className="mt-0.5 text-sm text-body">{a.description}</p>
+                    )}
+                    <p className="mt-0.5 text-xs text-muted">
+                      {new Date(a.performed_at).toLocaleDateString(undefined, {
+                        year: "numeric",
+                        month: "short",
+                        day: "numeric",
+                      })}
+                    </p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         {/* Incident history (uptime service) */}
         {dash.services.includes("uptime") && dash.incidents.length > 0 && (

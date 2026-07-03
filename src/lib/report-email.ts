@@ -118,8 +118,41 @@ export type ReportEmailInput = {
   client: { company_name: string; website_url: string };
   services: ServiceType[];
   metrics: Partial<Record<ServiceType, unknown>>;
+  activity: Array<{
+    title: string;
+    description: string | null;
+    category: string | null;
+    performed_at: string;
+  }>;
   periodLabel: string;
 };
+
+function activitySection(activity: ReportEmailInput["activity"]): string {
+  if (!activity || activity.length === 0) return "";
+  const items = activity
+    .map(
+      (a) => `
+      <tr><td style="padding:8px 0;border-bottom:1px solid ${LINE};">
+        <div style="font:600 13px Arial,sans-serif;color:${INK};">${escapeHtml(a.title)}</div>
+        ${a.description ? `<div style="font:400 13px Arial,sans-serif;color:${BODY};margin-top:2px;">${escapeHtml(a.description)}</div>` : ""}
+        <div style="font:400 11px Arial,sans-serif;color:${MUTED};margin-top:2px;">${new Date(a.performed_at).toLocaleDateString()}</div>
+      </td></tr>`,
+    )
+    .join("");
+  return `
+    <tr><td style="padding:20px 24px 0;">
+      <div style="font:700 16px Arial,sans-serif;color:${INK};">What we did this period</div>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin-top:8px;">${items}</table>
+    </td></tr>`;
+}
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
 
 export function renderReportEmail(input: ReportEmailInput): {
   subject: string;
@@ -153,6 +186,7 @@ export function renderReportEmail(input: ReportEmailInput): {
           <div style="font:400 13px Arial,sans-serif;color:${MUTED};margin-top:6px;">Maintenance report · ${input.periodLabel}</div>
         </td></tr>
         ${sections}
+        ${activitySection(input.activity)}
         <tr><td style="padding:24px;">
           <div style="border-top:1px solid ${LINE};padding-top:16px;text-align:center;font:500 12px Arial,sans-serif;color:${BODY};">
             Maintained by ${input.agency.name}

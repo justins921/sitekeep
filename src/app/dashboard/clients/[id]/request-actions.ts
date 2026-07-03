@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { REQUEST_STATUSES, type RequestStatus } from "@/lib/requests";
+import { logActivity } from "@/lib/activity";
 
 export type RequestActionResult = { error: string } | null;
 
@@ -24,11 +25,35 @@ export async function setRequestStatusAction(
   const supabase = await createClient();
   await requireUser(supabase);
 
+  // Read current state so we only auto-log on the transition INTO done (avoids
+  // duplicate activity entries when re-saving an already-done request).
+  const { data: existing } = await supabase
+    .from("client_requests")
+    .select("status, title")
+    .eq("id", requestId)
+    .maybeSingle();
+
   const { error } = await supabase
     .from("client_requests")
     .update({ status, updated_at: new Date().toISOString() })
     .eq("id", requestId);
   if (error) return { error: error.message };
+
+  if (status === "done" && existing && existing.status !== "done") {
+    const { data: client } = await supabase
+      .from("clients")
+      .select("agency_id")
+      .eq("id", clientId)
+      .maybeSingle();
+    if (client?.agency_id) {
+      await logActivity(supabase, {
+        clientId,
+        agencyId: client.agency_id as string,
+        title: `Completed request: ${existing.title}`,
+        category: "request",
+      });
+    }
+  }
 
   revalidatePath(`/dashboard/clients/${clientId}`);
   return null;

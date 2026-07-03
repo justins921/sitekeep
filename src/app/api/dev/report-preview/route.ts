@@ -11,6 +11,12 @@ type PublicDashboard = {
   agency: { name: string; logo_url: string | null; brand_color: string };
   services: ServiceType[];
   metrics: Partial<Record<ServiceType, unknown>>;
+  activity: Array<{
+    title: string;
+    description: string | null;
+    category: string | null;
+    performed_at: string;
+  }>;
 };
 
 /**
@@ -37,6 +43,7 @@ export async function GET(req: NextRequest) {
     client: dash.client,
     services: dash.services,
     metrics: dash.metrics,
+    activity: dash.activity ?? [],
     periodLabel: periodLabel("monthly", new Date()),
   });
 

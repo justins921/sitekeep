@@ -2,6 +2,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { inspectCertificate } from "@/lib/metrics/security";
 import { sendEmail } from "@/lib/email";
+import { logActivity } from "@/lib/activity";
 import type { UptimeData, UptimeIncidentSummary } from "@/lib/metrics/types";
 
 // Uptime + SSL-expiry monitoring. The cron path (service-role client) records
@@ -313,6 +314,15 @@ export async function runUptimeMonitoring(
     } else if (result.is_up && open) {
       await resolveOpenIncident(supabase, client.id, "downtime", now);
       resolved++;
+      // Auto-log the recovery to the activity feed (Phase 10).
+      await logActivity(supabase, {
+        clientId: client.id,
+        agencyId: client.agency_id,
+        title: "Resolved a downtime incident",
+        description: `${client.website_url} is responding normally again.`,
+        category: "incident",
+        performedAt: now,
+      });
       if (agency) {
         alerts++;
         await sendAgencyAlert(
@@ -407,6 +417,14 @@ export async function runSslExpiryChecks(
       }
     } else if (open) {
       await resolveOpenIncident(supabase, client.id, "ssl_expiring", now);
+      await logActivity(supabase, {
+        clientId: client.id,
+        agencyId: client.agency_id,
+        title: "SSL certificate renewed",
+        description: `The certificate for ${client.website_url} is valid again (${days} days remaining).`,
+        category: "incident",
+        performedAt: now,
+      });
     }
   }
 
