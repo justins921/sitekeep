@@ -19,7 +19,6 @@ export type ClientDefaults = {
   contact_email?: string | null;
   monthly_rate?: number;
   is_active?: boolean;
-  ga4_property_id?: string | null;
 };
 
 export function ClientForm({
@@ -27,13 +26,11 @@ export function ClientForm({
   defaults,
   submitLabel,
   showActive = false,
-  gaServiceAccountEmail,
 }: {
   action: Action;
   defaults?: ClientDefaults;
   submitLabel: string;
   showActive?: boolean;
-  gaServiceAccountEmail?: string | null;
 }) {
   const [state, formAction, pending] = useActionState<ClientFormState, FormData>(
     action,
@@ -106,40 +103,6 @@ export function ClientForm({
             className={inputClass}
           />
         </div>
-      </div>
-
-      <div className="space-y-1.5">
-        <label htmlFor="ga4_property_id" className={labelClass}>
-          GA4 Property ID <span className="text-faint">(optional)</span>
-        </label>
-        <input
-          id="ga4_property_id"
-          name="ga4_property_id"
-          type="text"
-          inputMode="numeric"
-          defaultValue={defaults?.ga4_property_id ?? ""}
-          placeholder="123456789"
-          className={inputClass}
-        />
-        <p className="text-xs text-muted">
-          {gaServiceAccountEmail ? (
-            <>
-              Connects real traffic from Google Analytics 4. In GA4, open{" "}
-              <span className="font-medium text-ink">
-                Admin → Property Access Management
-              </span>{" "}
-              and add{" "}
-              <span className="font-medium text-ink">{gaServiceAccountEmail}</span>{" "}
-              as a Viewer, then paste the numeric Property ID here. Leave blank to
-              show demo numbers.
-            </>
-          ) : (
-            <>
-              Numeric Property ID from GA4 (Admin → Property Settings). Leave blank
-              to show demo numbers until analytics is connected.
-            </>
-          )}
-        </p>
       </div>
 
       {showActive && (

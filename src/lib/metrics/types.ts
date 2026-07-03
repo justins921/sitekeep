@@ -44,6 +44,7 @@ export type TrafficData = {
   users: number;
   pageviews: number;
   trend_pct: number; // sessions vs the prior period
+  daily?: { date: string; sessions: number }[]; // per-day sessions (real GA4 only)
 };
 
 export type UptimeIncidentSummary = {

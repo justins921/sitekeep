@@ -10,6 +10,9 @@ import {
 } from "@/components/metrics/MetricCards";
 import { createClient } from "@/lib/supabase/server";
 import { ServiceToggles } from "./ServiceToggles";
+import { TrafficSettings } from "./TrafficSettings";
+import { getServiceAccount } from "@/lib/metrics/ga4";
+import type { TrafficData } from "@/lib/metrics/types";
 import { DeleteClientButton } from "./DeleteClientButton";
 import { CopyLinkButton } from "./CopyLinkButton";
 import { RefreshButton } from "./RefreshButton";
@@ -49,6 +52,7 @@ export default async function ClientDetailPage({
     { data: incidents },
     { data: requests },
     { data: activity },
+    { data: trafficSvc },
   ] = await Promise.all([
     supabase
       .from("reports")
@@ -72,10 +76,25 @@ export default async function ClientDetailPage({
       .select("*")
       .eq("client_id", id)
       .order("performed_at", { ascending: false }),
+    supabase
+      .from("client_services")
+      .select("config")
+      .eq("client_id", id)
+      .eq("service_type", "traffic")
+      .maybeSingle(),
   ]);
   const entitled = isEntitled(sub?.status);
 
   const enabledServices = SERVICE_TYPES.filter((t) => services[t]);
+
+  // Traffic (GA4) settings state for the detail-page field.
+  const ga4PropertyId =
+    ((trafficSvc?.config as { ga4_property_id?: string | null } | null)
+      ?.ga4_property_id ?? client.ga4_property_id) ?? null;
+  const ga4ServiceEmail = getServiceAccount()?.client_email ?? null;
+  const trafficConnected =
+    Boolean(snapshots.traffic) &&
+    (snapshots.traffic!.data as TrafficData).demo === false;
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
   const publicUrl = `${siteUrl}/d/${client.slug}`;
@@ -191,6 +210,16 @@ export default async function ClientDetailPage({
         <div className="mt-5">
           <ServiceToggles clientId={id} initial={services} />
         </div>
+        {services.traffic && (
+          <div className="mt-4">
+            <TrafficSettings
+              clientId={id}
+              initialPropertyId={ga4PropertyId}
+              serviceAccountEmail={ga4ServiceEmail}
+              connected={trafficConnected}
+            />
+          </div>
+        )}
       </div>
 
       {/* Metrics */}

@@ -16,7 +16,6 @@ import {
   paidSeatsFor,
   syncSubscriptionQuantity,
 } from "@/lib/billing";
-import { normalizeGa4PropertyId } from "@/lib/metrics/ga4";
 import { recordUptimeCheck, writeUptimeSnapshot } from "@/lib/uptime";
 
 export type ClientFormState = { error: string } | null;
@@ -26,7 +25,6 @@ type ClientValues = {
   website_url: string;
   contact_email: string | null;
   monthly_rate: number;
-  ga4_property_id: string | null;
 };
 type ParseResult = { error: string } | { values: ClientValues };
 
@@ -48,21 +46,12 @@ function parseForm(formData: FormData): ParseResult {
     return { error: "Monthly rate must be a positive number." as const };
   }
 
-  const rawGa4 = String(formData.get("ga4_property_id") ?? "").trim();
-  if (rawGa4 && !normalizeGa4PropertyId(rawGa4)) {
-    return {
-      error:
-        "GA4 Property ID must be numeric (e.g. 123456789), not a G-XXXX measurement ID.",
-    };
-  }
-
   return {
     values: {
       company_name,
       website_url,
       contact_email: contact_email || null,
       monthly_rate,
-      ga4_property_id: normalizeGa4PropertyId(rawGa4),
     },
   };
 }
@@ -283,12 +272,17 @@ export async function refreshMetricsAction(
 
   const { data: enabledRows } = await supabase
     .from("client_services")
-    .select("service_type")
+    .select("service_type, config")
     .eq("client_id", clientId)
     .eq("enabled", true);
 
   const enabled = (enabledRows ?? []).map((r) => r.service_type as ServiceType);
   if (enabled.length === 0) return { ran: false, results: [] };
+
+  // GA4 property id: per-service config first, legacy client column as fallback.
+  const trafficConfig = (enabledRows ?? []).find((r) => r.service_type === "traffic")
+    ?.config as { ga4_property_id?: string | null } | null | undefined;
+  const ga4PropertyId = trafficConfig?.ga4_property_id ?? client.ga4_property_id;
 
   const results = await Promise.all(
     enabled.map(async (service_type) => {
@@ -302,7 +296,7 @@ export async function refreshMetricsAction(
         }
 
         const result = await runService(service_type, client.website_url, {
-          ga4PropertyId: client.ga4_property_id,
+          ga4PropertyId,
         });
         if (!result.ok) return { service_type, ok: false, error: result.error };
 

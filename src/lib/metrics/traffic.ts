@@ -1,14 +1,15 @@
 import type { ServiceResult, TrafficData } from "./types";
-import { ga4Configured, normalizeGa4PropertyId, runGa4Report } from "./ga4";
+import { ga4Configured, ga4SourceFor, normalizeGa4PropertyId, runGa4Report } from "./ga4";
 
 const RANGE_DAYS = 30;
 
 /**
  * Traffic provider. Uses real Google Analytics 4 data when the account is
- * configured (GA4_SERVICE_ACCOUNT_JSON) AND the client has a GA4 property id;
- * otherwise returns clearly-labeled demo numbers (`demo: true`) so the
- * dashboard still renders during setup. The persisted shape is identical either
- * way, so nothing downstream needs to change.
+ * configured (GA4_SERVICE_ACCOUNT_KEY/JSON) AND the client has a GA4 property
+ * id; otherwise returns clearly-labeled demo numbers (`demo: true`). The
+ * persisted shape is identical either way, so nothing downstream changes. GA4
+ * errors (missing access, API failure) degrade gracefully to the stub rather
+ * than failing the refresh — the dashboard shows a "not connected" state.
  */
 export async function runTraffic(
   url: string,
@@ -16,9 +17,9 @@ export async function runTraffic(
 ): Promise<ServiceResult<TrafficData>> {
   const property = normalizeGa4PropertyId(propertyId);
 
-  if (ga4Configured() && property) {
+  if (ga4SourceFor(ga4Configured(), property) === "real" && property) {
     try {
-      const { current, prior } = await runGa4Report(property, RANGE_DAYS, Date.now());
+      const { current, prior, daily } = await runGa4Report(property, RANGE_DAYS, Date.now());
       const trend_pct =
         prior.sessions > 0
           ? Math.round(((current.sessions - prior.sessions) / prior.sessions) * 100)
@@ -34,13 +35,16 @@ export async function runTraffic(
           users: current.users,
           pageviews: current.pageviews,
           trend_pct,
+          daily,
         },
       };
     } catch (err) {
-      return {
-        ok: false,
-        error: err instanceof Error ? err.message : "GA4 request failed.",
-      };
+      // Never crash the refresh — fall back to the labeled demo stub.
+      console.warn(
+        `[traffic] GA4 read failed for property ${property}; using demo data.`,
+        err instanceof Error ? err.message : err,
+      );
+      return { ok: true, data: demoTraffic(url) };
     }
   }
 

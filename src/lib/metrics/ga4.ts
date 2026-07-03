@@ -1,4 +1,7 @@
-import "server-only";
+// NOTE: no "server-only" here — the PURE helpers (parseServiceAccount,
+// normalizeGa4PropertyId, ga4SourceFor) are unit-tested outside Next. The
+// network/crypto paths still only ever run server-side (they're only called by
+// the traffic provider, which runs in server actions / cron).
 import { createSign } from "node:crypto";
 
 /**
@@ -7,11 +10,13 @@ import { createSign } from "node:crypto";
  * account email (Viewer), so there's no per-client OAuth. Server-to-server only.
  *
  * We hand-sign the OAuth2 JWT (RS256) with Node's crypto and exchange it for a
- * short-lived access token, rather than pulling in google-auth-library. The
- * token is cached in-module until shortly before it expires.
+ * short-lived access token — equivalent to a BetaAnalyticsDataClient runReport
+ * but with zero dependencies (no google-auth-library / gRPC), which keeps the
+ * serverless bundle lean and matches the implementation already verified live.
  *
- * Credentials come from GA4_SERVICE_ACCOUNT_JSON (the full service-account key
- * file, pasted verbatim as one env var).
+ * Credentials: GA4_SERVICE_ACCOUNT_KEY (base64-encoded JSON — recommended, since
+ * base64 survives the private_key's newlines) OR GA4_SERVICE_ACCOUNT_JSON (raw
+ * JSON). Never logged or exposed; server-side only.
  */
 
 type ServiceAccount = {
@@ -26,24 +31,41 @@ const DATA_API = "https://analyticsdata.googleapis.com/v1beta";
 
 let credsCache: ServiceAccount | null | undefined;
 
-/** Parse (once) the service-account JSON from the environment. */
+/**
+ * Parse a service-account credential from a raw env value. Accepts either raw
+ * JSON (`{ ... }`) or base64-encoded JSON. Pure + side-effect free so it can be
+ * unit-tested. Returns null when absent or malformed.
+ */
+export function parseServiceAccount(raw: string | undefined | null): ServiceAccount | null {
+  if (!raw) return null;
+  let text = raw.trim();
+  // If it isn't already JSON, treat it as base64-encoded JSON.
+  if (!text.startsWith("{")) {
+    try {
+      text = Buffer.from(text, "base64").toString("utf8");
+    } catch {
+      return null;
+    }
+  }
+  try {
+    const parsed = JSON.parse(text) as Partial<ServiceAccount>;
+    if (!parsed.client_email || !parsed.private_key) return null;
+    return {
+      client_email: parsed.client_email,
+      // Support keys stored with escaped newlines (\n) as well as real ones.
+      private_key: parsed.private_key.replace(/\\n/g, "\n"),
+      token_uri: parsed.token_uri || DEFAULT_TOKEN_URI,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/** Parse (once) the service account from the environment. */
 export function getServiceAccount(): ServiceAccount | null {
   if (credsCache !== undefined) return credsCache;
-  const raw = process.env.GA4_SERVICE_ACCOUNT_JSON;
-  if (!raw) return (credsCache = null);
-  try {
-    const parsed = JSON.parse(raw) as Partial<ServiceAccount>;
-    if (!parsed.client_email || !parsed.private_key) return (credsCache = null);
-    // Support keys stored with escaped newlines (\n) as well as real ones.
-    const private_key = parsed.private_key.replace(/\\n/g, "\n");
-    return (credsCache = {
-      client_email: parsed.client_email,
-      private_key,
-      token_uri: parsed.token_uri || DEFAULT_TOKEN_URI,
-    });
-  } catch {
-    return (credsCache = null);
-  }
+  const raw = process.env.GA4_SERVICE_ACCOUNT_KEY ?? process.env.GA4_SERVICE_ACCOUNT_JSON;
+  return (credsCache = parseServiceAccount(raw));
 }
 
 /** Is GA4 configured at all? Lets the provider fall back to demo data cleanly. */
@@ -60,6 +82,17 @@ export function normalizeGa4PropertyId(input: string | null | undefined): string
   if (!input) return null;
   const digits = input.replace(/[^0-9]/g, "");
   return digits.length ? digits : null;
+}
+
+/**
+ * Pure selector: use REAL GA4 only when credentials are configured AND the
+ * client has a usable (numeric) property id; otherwise the labeled demo stub.
+ */
+export function ga4SourceFor(
+  hasCredentials: boolean,
+  propertyId: string | null | undefined,
+): "real" | "stub" {
+  return hasCredentials && normalizeGa4PropertyId(propertyId) ? "real" : "stub";
 }
 
 const base64url = (buf: Buffer | string) =>
@@ -105,6 +138,7 @@ async function getAccessToken(sa: ServiceAccount, now: number): Promise<string> 
 }
 
 export type Ga4Totals = { sessions: number; users: number; pageviews: number };
+export type Ga4DailyPoint = { date: string; sessions: number }; // date = YYYY-MM-DD
 
 type RunReportResponse = {
   error?: { message?: string };
@@ -116,26 +150,31 @@ type RunReportResponse = {
   }>;
 };
 
+const yyyymmdd = (ms: number): string => {
+  const d = new Date(ms);
+  return `${d.getUTCFullYear()}${String(d.getUTCMonth() + 1).padStart(2, "0")}${String(d.getUTCDate()).padStart(2, "0")}`;
+};
+
 /**
- * Run one report covering the trailing `rangeDays` window AND the prior window
- * of the same length, so the caller can compute a period-over-period trend.
- * Returns totals for [current, prior].
+ * One date-dimensioned report over the trailing `rangeDays` window PLUS the
+ * prior window of equal length. Returns period totals for sessions / totalUsers
+ * / screenPageViews (current + prior, for the trend) and a per-day sessions
+ * series for the CURRENT window (feeds the trend charts).
  */
 export async function runGa4Report(
   propertyId: string,
   rangeDays: number,
   now: number,
-): Promise<{ current: Ga4Totals; prior: Ga4Totals }> {
+): Promise<{ current: Ga4Totals; prior: Ga4Totals; daily: Ga4DailyPoint[] }> {
   const sa = getServiceAccount();
   if (!sa) throw new Error("GA4 service account not configured.");
   const token = await getAccessToken(sa, now);
 
   const body = {
-    dateRanges: [
-      { startDate: `${rangeDays}daysAgo`, endDate: "yesterday" },
-      { startDate: `${rangeDays * 2}daysAgo`, endDate: `${rangeDays + 1}daysAgo` },
-    ],
+    dateRanges: [{ startDate: `${rangeDays * 2}daysAgo`, endDate: "yesterday" }],
+    dimensions: [{ name: "date" }],
     metrics: [{ name: "sessions" }, { name: "totalUsers" }, { name: "screenPageViews" }],
+    orderBys: [{ dimension: { dimensionName: "date" } }],
   };
 
   const res = await fetch(`${DATA_API}/properties/${propertyId}:runReport`, {
@@ -148,25 +187,36 @@ export async function runGa4Report(
     throw new Error(json.error?.message || `GA4 Data API returned ${res.status}.`);
   }
 
-  // With multiple date ranges and no dimensions, GA4 tags each row with a
-  // synthetic "dateRange" dimension valued "date_range_0" / "date_range_1".
-  const drIndex = (json.dimensionHeaders ?? []).findIndex((h) => h.name === "dateRange");
   const metricNames = (json.metricHeaders ?? []).map((h) => h.name);
   const blank = (): Ga4Totals => ({ sessions: 0, users: 0, pageviews: 0 });
-  const totals: Ga4Totals[] = [blank(), blank()];
+  const current = blank();
+  const prior = blank();
+  const daily: Ga4DailyPoint[] = [];
+  // Rows dated on/after this belong to the current window; earlier = prior.
+  const cutoff = yyyymmdd(now - rangeDays * 86_400_000);
 
   for (const row of json.rows ?? []) {
-    const tag = drIndex >= 0 ? row.dimensionValues?.[drIndex]?.value : "date_range_0";
-    const slot = tag === "date_range_1" ? 1 : 0;
+    const date = row.dimensionValues?.[0]?.value ?? "";
+    const isCurrent = date >= cutoff;
+    const bucket = isCurrent ? current : prior;
+    let sessions = 0;
     (row.metricValues ?? []).forEach((mv, i) => {
       const n = Number(mv.value);
       const value = Number.isFinite(n) ? n : 0;
       const name = metricNames[i];
-      if (name === "sessions") totals[slot].sessions += value;
-      else if (name === "totalUsers") totals[slot].users += value;
-      else if (name === "screenPageViews") totals[slot].pageviews += value;
+      if (name === "sessions") {
+        bucket.sessions += value;
+        sessions = value;
+      } else if (name === "totalUsers") bucket.users += value;
+      else if (name === "screenPageViews") bucket.pageviews += value;
     });
+    if (isCurrent && date.length === 8) {
+      daily.push({
+        date: `${date.slice(0, 4)}-${date.slice(4, 6)}-${date.slice(6, 8)}`,
+        sessions,
+      });
+    }
   }
 
-  return { current: totals[0], prior: totals[1] };
+  return { current, prior, daily };
 }
