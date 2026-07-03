@@ -3,11 +3,8 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { Card } from "@/components/ui";
 import { type ServiceType } from "@/lib/services";
-import {
-  ServiceMetricBlock,
-  IncidentList,
-  type IncidentEntry,
-} from "@/components/metrics/MetricCards";
+import { IncidentList, type IncidentEntry } from "@/components/metrics/MetricCards";
+import { ServiceCard } from "@/components/metrics/ServiceCards";
 import { TrendCharts } from "@/components/metrics/TrendCharts";
 import { TREND_KEYS, emptyTrends, type TrendSeries } from "@/lib/trends";
 import { timeAgo } from "@/components/metrics/format";
@@ -118,27 +115,28 @@ export default async function PublicDashboardPage({
           )}
         </div>
 
-        {/* Metrics per enabled service */}
-        <div className="mt-10 space-y-10">
+        {/* Metrics per enabled service — premium multi-column card grid */}
+        <div className="mt-8">
           {dash.services.length === 0 ? (
             <Card className="p-10 text-center text-sm text-muted">
               This dashboard is being set up. Check back soon.
             </Card>
           ) : (
-            dash.services.map((type) => (
-              <div
-                key={type}
-                className="border-t-2 pt-6"
-                style={{ borderColor: withAlpha(brand, 0.25) }}
-              >
-                <ServiceMetricBlock
-                  type={type}
-                  data={dash.metrics[type] ?? null}
-                  capturedAt={dash.updated?.[type]}
-                  accentColor={accent}
-                />
-              </div>
-            ))
+            <div className="grid gap-5 lg:grid-cols-2">
+              {dash.services.map((type) => (
+                <div
+                  key={type}
+                  className={type === "page_speed" || type === "traffic" ? "lg:col-span-2" : ""}
+                >
+                  <ServiceCard
+                    type={type}
+                    data={dash.metrics[type] ?? null}
+                    capturedAt={dash.updated?.[type]}
+                    accentColor={accent}
+                  />
+                </div>
+              ))}
+            </div>
           )}
         </div>
 

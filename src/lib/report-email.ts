@@ -1,15 +1,12 @@
 import "server-only";
 import type { ServiceType } from "@/lib/services";
 import { SERVICE_META } from "@/lib/services";
-import type {
-  PageSpeedData,
-  SecurityData,
-  TrafficData,
-  UptimeData,
-} from "@/lib/metrics/types";
+import type { SecurityData, TrafficData, UptimeData } from "@/lib/metrics/types";
 import { cls, ms, rate, secs } from "@/components/metrics/format";
 import { normalizeHex, readableText, safeAccent } from "@/lib/color";
 import { sparklineSvg } from "@/lib/sparkline";
+import { gaugeSvg, comparisonLineSvg, RISK_META } from "@/lib/charts";
+import { normalizePageSpeed } from "@/lib/metrics/normalize";
 import { TREND_KEYS, TREND_META, type TrendSeries } from "@/lib/trends";
 
 // Email clients strip <style>/classes, so the report mirrors the dashboard's
@@ -25,13 +22,6 @@ const RATING_HEX: Record<string, string> = {
   poor: "#cb52cc",
   none: INK,
 };
-
-function scoreHex(score: number | null): string {
-  if (score === null) return INK;
-  if (score >= 90) return "#6cad45";
-  if (score >= 50) return "#e87c2e";
-  return "#cb52cc";
-}
 
 function card(label: string, value: string, unit: string, color: string): string {
   return `
@@ -49,35 +39,75 @@ function row(cells: string[]): string {
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 -6px;"><tr>${cells.join("")}</tr></table>`;
 }
 
-function pageSpeed(d: PageSpeedData): string {
-  return row([
-    card("Performance", d.performance_score?.toString() ?? "—", d.performance_score !== null ? "/100" : "", scoreHex(d.performance_score)),
-    card("LCP", secs(d.lcp_ms), d.lcp_ms !== null ? "s" : "", RATING_HEX[rate("lcp", d.lcp_ms)]),
-    card("CLS", cls(d.cls), "", RATING_HEX[rate("cls", d.cls)]),
-  ]) + row([
-    card("INP", ms(d.inp_ms), d.inp_ms !== null ? "ms" : "", RATING_HEX[rate("inp", d.inp_ms)]),
-    card("FCP", secs(d.fcp_ms), d.fcp_ms !== null ? "s" : "", RATING_HEX[rate("fcp", d.fcp_ms)]),
-    card("TBT", ms(d.tbt_ms), d.tbt_ms !== null ? "ms" : "", RATING_HEX[rate("tbt", d.tbt_ms)]),
-  ]);
+function gaugeCell(label: string, score: number | null): string {
+  return `<td align="center" valign="top" width="25%" style="padding:6px;">
+    ${gaugeSvg(score, { size: 84 })}
+    <div style="font:500 12px Arial,sans-serif;color:${MUTED};margin-top:2px;">${label}</div>
+  </td>`;
+}
+
+function pageSpeed(raw: unknown): string {
+  const d = normalizePageSpeed(raw);
+  const s = d.mobile ?? d.desktop;
+  if (!s) return `<div style="font:400 13px Arial,sans-serif;color:${MUTED};">No data captured yet.</div>`;
+  const c = s.categories;
+  const gauges = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+    ${gaugeCell("Performance", c.performance)}
+    ${gaugeCell("Accessibility", c.accessibility)}
+    ${gaugeCell("Best Practices", c.best_practices)}
+    ${gaugeCell("SEO", c.seo)}
+  </tr></table>`;
+  const vitals =
+    row([
+      card("LCP", secs(s.cwv.lcp_ms), s.cwv.lcp_ms !== null ? "s" : "", RATING_HEX[rate("lcp", s.cwv.lcp_ms)]),
+      card("INP", ms(s.cwv.inp_ms), s.cwv.inp_ms !== null ? "ms" : "", RATING_HEX[rate("inp", s.cwv.inp_ms)]),
+      card("CLS", cls(s.cwv.cls), "", RATING_HEX[rate("cls", s.cwv.cls)]),
+    ]) +
+    row([
+      card("FCP", secs(s.cwv.fcp_ms), s.cwv.fcp_ms !== null ? "s" : "", RATING_HEX[rate("fcp", s.cwv.fcp_ms)]),
+      card("TBT", ms(s.cwv.tbt_ms), s.cwv.tbt_ms !== null ? "ms" : "", RATING_HEX[rate("tbt", s.cwv.tbt_ms)]),
+      card("", "", "", INK),
+    ]);
+  return gauges + `<div style="font:600 11px Arial,sans-serif;color:${MUTED};padding:12px 6px 4px;text-transform:uppercase;letter-spacing:.4px;">Core Web Vitals</div>` + vitals;
 }
 
 function security(d: SecurityData): string {
-  const gradeText = { pass: "Secure", warn: "Needs attention", fail: "At risk" }[d.grade];
-  const gradeColor = { pass: "#6cad45", warn: "#e87c2e", fail: "#cb52cc" }[d.grade];
+  const risk = RISK_META[d.risk_level ?? "medium"];
   const present = Object.values(d.headers).filter(Boolean).length;
-  return row([
-    card("Overall", gradeText, "", gradeColor),
-    card("HTTPS enforced", d.https_enforced ? "Yes" : "No", "", d.https_enforced ? "#6cad45" : "#cb52cc"),
-    card("SSL expires in", d.ssl_days_to_expiry?.toString() ?? "—", d.ssl_days_to_expiry !== null ? "days" : "", INK),
-  ]) + `<div style="font:500 12px Arial,sans-serif;color:${MUTED};padding:10px 6px 0;">Security headers present: ${present}/5</div>`;
+  const sb =
+    d.safe_browsing?.checked
+      ? `<div style="font:500 12px Arial,sans-serif;color:${MUTED};padding:6px 6px 0;">Malware / Safe Browsing: ${d.safe_browsing.threats.length === 0 ? "Clean" : d.safe_browsing.threats.join(", ")}</div>`
+      : "";
+  return (
+    row([
+      card("Risk level", risk.label, "", risk.color),
+      card("HTTPS enforced", d.https_enforced ? "Yes" : "No", "", d.https_enforced ? "#6cad45" : "#cb52cc"),
+      card("SSL expires in", d.ssl_days_to_expiry?.toString() ?? "—", d.ssl_days_to_expiry !== null ? "days" : "", INK),
+    ]) +
+    `<div style="font:500 12px Arial,sans-serif;color:${MUTED};padding:10px 6px 0;">Security headers present: ${present}/5</div>` +
+    sb
+  );
 }
 
-function traffic(d: TrafficData): string {
-  return row([
-    card("Sessions", d.sessions.toLocaleString(), `(${d.trend_pct > 0 ? "+" : ""}${d.trend_pct}%)`, INK),
-    card("Users", d.users.toLocaleString(), "", INK),
-    card("Pageviews", d.pageviews.toLocaleString(), "", INK),
+function traffic(d: TrafficData, accent: string): string {
+  const tag = (delta?: { change_pct: number }) =>
+    delta ? `(${delta.change_pct > 0 ? "+" : ""}${delta.change_pct}%)` : "";
+  const tiles = row([
+    card("Users", d.users.toLocaleString(), tag(d.deltas?.users), INK),
+    card("New users", (d.new_users ?? 0).toLocaleString(), tag(d.deltas?.new_users), INK),
+    card("Engagement", (d.engagement_rate ?? 0).toFixed(1), "%", INK),
   ]);
+  const cur = (d.daily ?? []).map((p) => p.users);
+  const prev = (d.daily_prev ?? []).map((p) => p.users);
+  const chart = comparisonLineSvg(cur, prev, { color: accent });
+  const chartBlock = chart
+    ? `<div style="padding:12px 6px 0;">
+        <div style="font:600 12px Arial,sans-serif;color:${INK};margin-bottom:6px;">Website traffic — users</div>
+        ${chart}
+        <div style="font:400 11px Arial,sans-serif;color:${MUTED};margin-top:4px;">Solid: last ${d.range_days} days · Dashed: preceding ${d.range_days} days</div>
+      </div>`
+    : "";
+  return tiles + chartBlock;
 }
 
 function uptime(d: UptimeData): string {
@@ -95,16 +125,16 @@ function uptime(d: UptimeData): string {
   );
 }
 
-function serviceSection(type: ServiceType, data: unknown): string {
+function serviceSection(type: ServiceType, data: unknown, accent: string): string {
   const meta = SERVICE_META[type];
   const isDemo = type === "traffic" && Boolean((data as TrafficData | null)?.demo);
   let body: string;
   if (!data) {
     body = `<div style="border:1px solid ${LINE};border-radius:14px;padding:16px;font:400 13px Arial,sans-serif;color:${MUTED};">No data captured yet.</div>`;
-  } else if (type === "page_speed") body = pageSpeed(data as PageSpeedData);
+  } else if (type === "page_speed") body = pageSpeed(data);
   else if (type === "security") body = security(data as SecurityData);
   else if (type === "uptime") body = uptime(data as UptimeData);
-  else body = traffic(data as TrafficData);
+  else body = traffic(data as TrafficData, accent);
 
   return `
     <tr><td style="padding:20px 24px 0;">
@@ -201,7 +231,7 @@ export function renderReportEmail(input: ReportEmailInput): {
   const sections =
     input.services.length === 0
       ? `<tr><td style="padding:24px;font:400 13px Arial,sans-serif;color:${MUTED};">No services are enabled for this dashboard.</td></tr>`
-      : input.services.map((t) => serviceSection(t, input.metrics[t] ?? null)).join("");
+      : input.services.map((t) => serviceSection(t, input.metrics[t] ?? null, accent)).join("");
 
   const html = `<!doctype html>
 <html><body style="margin:0;background:#fafafa;">

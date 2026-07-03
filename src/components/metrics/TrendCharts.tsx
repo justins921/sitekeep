@@ -1,11 +1,11 @@
 import { Card } from "@/components/ui";
 import { TREND_META, type TrendKey, type TrendSeries } from "@/lib/trends";
-import { Sparkline } from "./Sparkline";
+import { LineChart } from "@/components/charts/LineChart";
 
 /**
- * Compact trend charts for page-speed score, uptime %, and traffic sessions,
- * drawn from snapshot history. Shared by the authed detail page and the public
- * dashboard. Shows a clean low-data state until there are ≥2 points.
+ * Trend charts for page-speed score, uptime %, and traffic sessions, drawn from
+ * snapshot history with the shared LineChart. Shared by detail + public. Shows a
+ * clean low-data state until there are ≥2 points.
  */
 export function TrendCharts({
   trends,
@@ -19,7 +19,7 @@ export function TrendCharts({
   if (show.length === 0) return null;
 
   return (
-    <div className="grid gap-4 sm:grid-cols-3">
+    <div className="grid gap-4 lg:grid-cols-3">
       {show.map((key) => {
         const meta = TREND_META[key];
         const values = trends[key] ?? [];
@@ -38,9 +38,9 @@ export function TrendCharts({
             </div>
             <div className="mt-3">
               {enough ? (
-                <Sparkline values={values} color={accentColor ?? meta.color} />
+                <LineChart current={values} color={accentColor ?? meta.color} height={130} />
               ) : (
-                <p className="py-3 text-xs text-faint">Not enough history yet</p>
+                <p className="py-6 text-center text-xs text-faint">Not enough history yet</p>
               )}
             </div>
           </Card>

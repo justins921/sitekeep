@@ -3,11 +3,8 @@ import { Badge, Button, ButtonLink, Card } from "@/components/ui";
 import { getClientWithServices } from "@/lib/clients";
 import { getLatestSnapshots } from "@/lib/metrics";
 import { SERVICE_TYPES } from "@/lib/services";
-import {
-  ServiceMetricBlock,
-  IncidentList,
-  type IncidentEntry,
-} from "@/components/metrics/MetricCards";
+import { IncidentList, type IncidentEntry } from "@/components/metrics/MetricCards";
+import { ServiceCard } from "@/components/metrics/ServiceCards";
 import { TrendCharts } from "@/components/metrics/TrendCharts";
 import { getTrendSeries, TREND_KEYS } from "@/lib/trends";
 import { createClient } from "@/lib/supabase/server";
@@ -244,14 +241,20 @@ export default async function ClientDetailPage({
             Enable a service above to start collecting metrics.
           </Card>
         ) : (
-          <div className="mt-5 space-y-8">
+          <div className="mt-5 grid gap-5 lg:grid-cols-2">
             {enabledServices.map((type) => (
-              <ServiceMetricBlock
+              <div
                 key={type}
-                type={type}
-                data={snapshots[type]?.data ?? null}
-                capturedAt={snapshots[type]?.captured_at}
-              />
+                className={
+                  type === "page_speed" || type === "traffic" ? "lg:col-span-2" : ""
+                }
+              >
+                <ServiceCard
+                  type={type}
+                  data={snapshots[type]?.data ?? null}
+                  capturedAt={snapshots[type]?.captured_at}
+                />
+              </div>
             ))}
           </div>
         )}
@@ -271,60 +274,72 @@ export default async function ClientDetailPage({
         </div>
       )}
 
-      {/* Incident log (uptime service) */}
-      {services.uptime && (
-        <div className="mt-12">
-          <h2 className="text-xl font-bold tracking-tight">Incident log</h2>
-          <p className="mt-1 text-sm text-muted">
-            Downtime and SSL-expiry incidents detected by the uptime monitor.
-          </p>
-          <div className="mt-5">
-            <IncidentList incidents={(incidents ?? []) as IncidentEntry[]} />
-          </div>
+      {/* Management — agency-only, clearly separated from the client-facing metrics */}
+      <div className="mt-16 rounded-[var(--radius-card-lg)] border border-line bg-canvas-alt/60 p-6 sm:p-8">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <h2 className="text-xl font-bold tracking-tight">Management</h2>
+          <span className="text-xs text-muted">
+            Agency-only — none of this appears on the client dashboard
+          </span>
         </div>
-      )}
 
-      {/* Activity log */}
-      <div className="mt-12">
-        <h2 className="text-xl font-bold tracking-tight">What we did</h2>
-        <p className="mt-1 text-sm text-muted">
-          Log maintenance work here — it appears on the client&apos;s dashboard and
-          in the monthly report. Some entries are added automatically.
-        </p>
-        <div className="mt-5">
-          <ActivityLog clientId={id} initial={(activity ?? []) as ActivityEntry[]} />
+        <div className="mt-8 space-y-12">
+          {/* Incident log (uptime service) */}
+          {services.uptime && (
+            <section>
+              <h3 className="text-base font-bold text-ink">Incident log</h3>
+              <p className="mt-1 text-sm text-muted">
+                Downtime and SSL-expiry incidents detected by the uptime monitor.
+              </p>
+              <div className="mt-4">
+                <IncidentList incidents={(incidents ?? []) as IncidentEntry[]} />
+              </div>
+            </section>
+          )}
+
+          {/* Activity log */}
+          <section>
+            <h3 className="text-base font-bold text-ink">What we did</h3>
+            <p className="mt-1 text-sm text-muted">
+              Log maintenance work here — it appears on the client&apos;s dashboard
+              and in the monthly report. Some entries are added automatically.
+            </p>
+            <div className="mt-4">
+              <ActivityLog clientId={id} initial={(activity ?? []) as ActivityEntry[]} />
+            </div>
+          </section>
+
+          {/* Request board */}
+          <section>
+            <h3 className="text-base font-bold text-ink">Requests</h3>
+            <p className="mt-1 text-sm text-muted">
+              Change requests submitted from this client&apos;s dashboard. Move them
+              along as you work.
+            </p>
+            <div className="mt-4">
+              <RequestBoard clientId={id} initial={(requests ?? []) as ClientRequest[]} />
+            </div>
+          </section>
+
+          {/* Monthly report */}
+          <section>
+            <h3 className="text-base font-bold text-ink">Monthly report</h3>
+            <p className="mt-1 text-sm text-muted">
+              Automatically email this dashboard to the client each month.
+            </p>
+            <Card className="mt-4 p-6">
+              <ReportSettings
+                clientId={id}
+                defaults={{
+                  enabled: report?.enabled ?? false,
+                  send_day: report?.send_day ?? 1,
+                  recipient_email: report?.recipient_email ?? client.contact_email,
+                  last_sent_at: report?.last_sent_at ?? null,
+                }}
+              />
+            </Card>
+          </section>
         </div>
-      </div>
-
-      {/* Request board */}
-      <div className="mt-12">
-        <h2 className="text-xl font-bold tracking-tight">Requests</h2>
-        <p className="mt-1 text-sm text-muted">
-          Change requests submitted from this client&apos;s dashboard. Move them
-          along as you work.
-        </p>
-        <div className="mt-5">
-          <RequestBoard clientId={id} initial={(requests ?? []) as ClientRequest[]} />
-        </div>
-      </div>
-
-      {/* Monthly report */}
-      <div className="mt-12">
-        <h2 className="text-xl font-bold tracking-tight">Monthly report</h2>
-        <p className="mt-1 text-sm text-muted">
-          Automatically email this dashboard to the client each month.
-        </p>
-        <Card className="mt-5 p-6">
-          <ReportSettings
-            clientId={id}
-            defaults={{
-              enabled: report?.enabled ?? false,
-              send_day: report?.send_day ?? 1,
-              recipient_email: report?.recipient_email ?? client.contact_email,
-              last_sent_at: report?.last_sent_at ?? null,
-            }}
-          />
-        </Card>
       </div>
     </div>
   );

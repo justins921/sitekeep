@@ -1,15 +1,24 @@
-import type { ServiceResult, TrafficData } from "./types";
-import { ga4Configured, ga4SourceFor, normalizeGa4PropertyId, runGa4Report } from "./ga4";
+import type { ServiceResult, TrafficData, TrafficDelta } from "./types";
+import {
+  ga4Configured,
+  ga4SourceFor,
+  normalizeGa4PropertyId,
+  runGa4Report,
+  type Ga4Metrics,
+} from "./ga4";
 
 const RANGE_DAYS = 30;
 
+const delta = (value: number, prev: number): TrafficDelta => ({
+  value,
+  prev,
+  change_pct: prev > 0 ? Math.round(((value - prev) / prev) * 100) : value > 0 ? 100 : 0,
+});
+
 /**
- * Traffic provider. Uses real Google Analytics 4 data when the account is
- * configured (GA4_SERVICE_ACCOUNT_KEY/JSON) AND the client has a GA4 property
- * id; otherwise returns clearly-labeled demo numbers (`demo: true`). The
- * persisted shape is identical either way, so nothing downstream changes. GA4
- * errors (missing access, API failure) degrade gracefully to the stub rather
- * than failing the refresh — the dashboard shows a "not connected" state.
+ * Traffic provider. Real Google Analytics 4 when configured + a property id is
+ * set; otherwise labeled demo numbers (`demo: true`). GA4 errors degrade to the
+ * stub rather than failing the refresh.
  */
 export async function runTraffic(
   url: string,
@@ -19,13 +28,18 @@ export async function runTraffic(
 
   if (ga4SourceFor(ga4Configured(), property) === "real" && property) {
     try {
-      const { current, prior, daily } = await runGa4Report(property, RANGE_DAYS, Date.now());
-      const trend_pct =
-        prior.sessions > 0
-          ? Math.round(((current.sessions - prior.sessions) / prior.sessions) * 100)
-          : current.sessions > 0
-            ? 100
-            : 0;
+      const { current, prior, daily, dailyPrev } = await runGa4Report(
+        property,
+        RANGE_DAYS,
+        Date.now(),
+      );
+      const pick = (m: Ga4Metrics, k: keyof Ga4Metrics) => m[k];
+      const toPoint = (p: { date: string; users: number; newUsers: number; sessions: number }) => ({
+        date: p.date,
+        users: p.users,
+        new_users: p.newUsers,
+        sessions: p.sessions,
+      });
       return {
         ok: true,
         data: {
@@ -34,12 +48,21 @@ export async function runTraffic(
           sessions: current.sessions,
           users: current.users,
           pageviews: current.pageviews,
-          trend_pct,
-          daily,
+          new_users: current.newUsers,
+          engagement_rate: current.engagementRate,
+          avg_engagement_time: current.avgEngagementTime,
+          trend_pct: delta(current.sessions, prior.sessions).change_pct,
+          deltas: {
+            users: delta(pick(current, "users"), pick(prior, "users")),
+            new_users: delta(pick(current, "newUsers"), pick(prior, "newUsers")),
+            engagement_rate: delta(current.engagementRate, prior.engagementRate),
+            avg_engagement_time: delta(current.avgEngagementTime, prior.avgEngagementTime),
+          },
+          daily: daily.map(toPoint),
+          daily_prev: dailyPrev.map(toPoint),
         },
       };
     } catch (err) {
-      // Never crash the refresh — fall back to the labeled demo stub.
       console.warn(
         `[traffic] GA4 read failed for property ${property}; using demo data.`,
         err instanceof Error ? err.message : err,
@@ -53,19 +76,35 @@ export async function runTraffic(
 
 /**
  * Deterministic sample numbers seeded from the URL so the demo stays stable
- * across refreshes (rather than jittering like real data would). Used until a
- * GA4 property is connected for the client.
+ * across refreshes. Includes a plausible daily series + deltas so the redesigned
+ * card and comparison chart render fully in demo mode (clearly labeled).
  */
 function demoTraffic(url: string): TrafficData {
   let seed = 0;
   for (let i = 0; i < url.length; i++) seed = (seed * 31 + url.charCodeAt(i)) >>> 0;
-  const pick = (min: number, max: number, salt: number) =>
-    min + ((seed ^ (salt * 2654435761)) >>> 0) % (max - min);
+  const rand = (salt: number) => ((seed ^ (salt * 2654435761)) >>> 0) / 0xffffffff;
+  const pick = (min: number, max: number, salt: number) => min + Math.floor(rand(salt) * (max - min));
 
-  const sessions = pick(1800, 9500, 1);
-  const users = Math.round(sessions * (0.72 + pick(0, 20, 2) / 100));
-  const pageviews = Math.round(sessions * (1.8 + pick(0, 120, 3) / 100));
-  const trend_pct = pick(0, 34, 4) - 12; // roughly -12%..+22%
+  const users = pick(1400, 7200, 1);
+  const newUsers = Math.round(users * (0.45 + rand(2) * 0.2));
+  const sessions = Math.round(users * (1.15 + rand(3) * 0.3));
+  const pageviews = Math.round(sessions * (1.8 + rand(4) * 1.2));
+  const engagementRate = Math.round((48 + rand(5) * 30) * 10) / 10;
+  const avgEngTime = pick(40, 160, 6);
+
+  const prevUsers = Math.round(users * (0.82 + rand(7) * 0.3));
+  const prevNew = Math.round(newUsers * (0.82 + rand(8) * 0.3));
+
+  // Per-day series (30 pts each window) with a gentle wave so the chart looks real.
+  const mkSeries = (base: number, salt: number) =>
+    Array.from({ length: RANGE_DAYS }, (_, i) => {
+      const d = new Date(Date.now() - (RANGE_DAYS - i) * 86_400_000)
+        .toISOString()
+        .slice(0, 10);
+      const wave = 0.7 + 0.6 * Math.abs(Math.sin((i + salt) / 4));
+      const u = Math.round((base / RANGE_DAYS) * wave);
+      return { date: d, users: u, new_users: Math.round(u * 0.5), sessions: Math.round(u * 1.2) };
+    });
 
   return {
     demo: true,
@@ -73,6 +112,17 @@ function demoTraffic(url: string): TrafficData {
     sessions,
     users,
     pageviews,
-    trend_pct,
+    new_users: newUsers,
+    engagement_rate: engagementRate,
+    avg_engagement_time: avgEngTime,
+    trend_pct: delta(sessions, Math.round(sessions * 0.85)).change_pct,
+    deltas: {
+      users: delta(users, prevUsers),
+      new_users: delta(newUsers, prevNew),
+      engagement_rate: delta(engagementRate, Math.round(engagementRate * 0.95 * 10) / 10),
+      avg_engagement_time: delta(avgEngTime, Math.round(avgEngTime * 0.92)),
+    },
+    daily: mkSeries(users, 0),
+    daily_prev: mkSeries(prevUsers, 9),
   };
 }

@@ -1,5 +1,7 @@
 import tls from "node:tls";
-import type { SecurityData, SecurityGrade, ServiceResult } from "./types";
+import type { SecurityData, SecurityGrade, SecurityRisk, ServiceResult } from "./types";
+
+const SAFE_BROWSING_ENDPOINT = "https://safebrowsing.googleapis.com/v4/threatMatches:find";
 
 const FETCH_TIMEOUT_MS = 15_000;
 const TLS_TIMEOUT_MS = 10_000;
@@ -70,21 +72,75 @@ async function fetchWithTimeout(url: string, redirect: RequestRedirect) {
   }
 }
 
-function grade(d: Omit<SecurityData, "grade">): SecurityGrade {
-  if (!d.https_enforced || !d.ssl_valid) return "fail";
-  if (d.ssl_days_to_expiry !== null && d.ssl_days_to_expiry < 14) return "fail";
+type SecurityBase = Omit<SecurityData, "grade" | "risk_level" | "safe_browsing">;
 
+function headerScore(d: SecurityBase): number {
   const h = d.headers;
-  const headerScore =
+  return (
     Number(h.hsts) +
     Number(h.csp) +
     Number(h.x_frame_options) +
     Number(h.x_content_type_options) +
-    Number(h.referrer_policy);
+    Number(h.referrer_policy)
+  );
+}
 
+function grade(d: SecurityBase): SecurityGrade {
+  if (!d.https_enforced || !d.ssl_valid) return "fail";
+  if (d.ssl_days_to_expiry !== null && d.ssl_days_to_expiry < 14) return "fail";
   const expirySoon = d.ssl_days_to_expiry !== null && d.ssl_days_to_expiry < 30;
-  if (headerScore >= 4 && !expirySoon) return "pass";
+  if (headerScore(d) >= 4 && !expirySoon) return "pass";
   return "warn";
+}
+
+/** Minimal→Critical risk from real SSL + header findings (+ Safe Browsing). */
+function riskLevel(d: SecurityBase, threats: number): SecurityRisk {
+  if (threats > 0) return "critical";
+  if (!d.ssl_valid || !d.https_enforced) return "high";
+  let points = 5 - headerScore(d); // 0 (all present) .. 5 (none)
+  if (d.ssl_days_to_expiry !== null && d.ssl_days_to_expiry < 14) points += 2;
+  else if (d.ssl_days_to_expiry !== null && d.ssl_days_to_expiry < 30) points += 1;
+  if (points === 0) return "minimal";
+  if (points <= 1) return "low";
+  if (points <= 3) return "medium";
+  if (points <= 5) return "high";
+  return "critical";
+}
+
+/**
+ * Real Google Safe Browsing lookup — ONLY when SAFE_BROWSING_API_KEY is set.
+ * Returns null otherwise so the UI omits the malware/blacklist tiles entirely
+ * (never a fabricated "no malware found").
+ */
+async function checkSafeBrowsing(url: string): Promise<{ checked: boolean; threats: string[] } | null> {
+  const key = process.env.SAFE_BROWSING_API_KEY;
+  if (!key) return null;
+  try {
+    const res = await fetch(`${SAFE_BROWSING_ENDPOINT}?key=${key}`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        client: { clientId: "sitekeep", clientVersion: "1.0" },
+        threatInfo: {
+          threatTypes: [
+            "MALWARE",
+            "SOCIAL_ENGINEERING",
+            "UNWANTED_SOFTWARE",
+            "POTENTIALLY_HARMFUL_APPLICATION",
+          ],
+          platformTypes: ["ANY_PLATFORM"],
+          threatEntryTypes: ["URL"],
+          threatEntries: [{ url }],
+        },
+      }),
+    });
+    if (!res.ok) return { checked: false, threats: [] };
+    const json = (await res.json()) as { matches?: Array<{ threatType?: string }> };
+    const threats = (json.matches ?? []).map((m) => m.threatType ?? "THREAT");
+    return { checked: true, threats };
+  } catch {
+    return { checked: false, threats: [] };
+  }
 }
 
 /**
@@ -129,10 +185,13 @@ export async function runSecurity(
       https_enforced = https_enforced || fetchValidatedTls;
     }
 
-    const cert = await inspectCertificate(host);
+    const [cert, safe_browsing] = await Promise.all([
+      inspectCertificate(host),
+      checkSafeBrowsing(res.url || httpsUrl),
+    ]);
     const ssl_valid = cert.valid || fetchValidatedTls;
 
-    const base: Omit<SecurityData, "grade"> = {
+    const base: SecurityBase = {
       final_url: res.url || httpsUrl,
       https_enforced,
       ssl_valid,
@@ -142,7 +201,15 @@ export async function runSecurity(
       headers,
     };
 
-    return { ok: true, data: { ...base, grade: grade(base) } };
+    return {
+      ok: true,
+      data: {
+        ...base,
+        grade: grade(base),
+        risk_level: riskLevel(base, safe_browsing?.threats.length ?? 0),
+        safe_browsing,
+      },
+    };
   } catch (err) {
     const msg =
       err instanceof Error && err.name === "AbortError"

@@ -42,7 +42,14 @@ export async function getTrendSeries(
   for (const row of data ?? []) {
     const key = row.service_type as TrendKey;
     if (!TREND_KEYS.includes(key)) continue;
-    const raw = (row.data as Record<string, unknown> | null)?.[TREND_META[key].field];
+    const d = row.data as Record<string, unknown> | null;
+    // Page speed nests the score under mobile.categories.performance in the new
+    // shape; fall back to the legacy top-level performance_score.
+    const raw =
+      key === "page_speed"
+        ? (d?.mobile as { categories?: { performance?: unknown } } | undefined)?.categories
+            ?.performance ?? d?.performance_score
+        : d?.[TREND_META[key].field];
     if (raw === null || raw === undefined) continue;
     const n = typeof raw === "number" ? raw : Number(raw);
     if (Number.isFinite(n)) out[key].push(n);
