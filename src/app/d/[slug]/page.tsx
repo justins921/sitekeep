@@ -5,8 +5,9 @@ import { Card } from "@/components/ui";
 import { type ServiceType } from "@/lib/services";
 import { IncidentList, type IncidentEntry } from "@/components/metrics/MetricCards";
 import { ServiceCard } from "@/components/metrics/ServiceCards";
-import { TrendCharts } from "@/components/metrics/TrendCharts";
-import { TREND_KEYS, emptyTrends, type TrendSeries } from "@/lib/trends";
+import { AnnotatedTrendCharts } from "@/components/metrics/AnnotatedTrendCharts";
+import { TREND_KEYS, datedFromRpc, type TrendKey, type TrendSeries } from "@/lib/trends";
+import { categoryMeta, type PublicAnnotation } from "@/lib/annotations";
 import { timeAgo } from "@/components/metrics/format";
 import { normalizeHex, readableText, safeAccent, withAlpha } from "@/lib/color";
 import { RequestChangeForm } from "./RequestChangeForm";
@@ -25,6 +26,8 @@ type PublicDashboard = {
     performed_at: string;
   }[];
   trends: TrendSeries;
+  trend_dates?: Partial<Record<TrendKey, string[]>>;
+  annotations: PublicAnnotation[];
 };
 
 async function loadDashboard(slug: string): Promise<PublicDashboard | null> {
@@ -153,12 +156,45 @@ export default async function PublicDashboardPage({
                 Trends
               </h3>
               <div className="mt-4">
-                <TrendCharts
-                  trends={dash.trends ?? emptyTrends()}
+                <AnnotatedTrendCharts
+                  series={datedFromRpc(dash.trends, dash.trend_dates)}
+                  annotations={dash.annotations ?? []}
                   show={show}
                   accentColor={accent}
                 />
               </div>
+              {(dash.annotations ?? []).length > 0 && (
+                <ul className="mt-5 space-y-2">
+                  {dash.annotations.map((a, i) => {
+                    const meta = categoryMeta(a.category);
+                    return (
+                      <li key={i} className="flex items-start gap-2.5 text-sm">
+                        <span
+                          className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-bold"
+                          style={{ color: meta.color, backgroundColor: `${meta.color}1a` }}
+                          aria-hidden
+                        >
+                          {meta.icon}
+                        </span>
+                        <span>
+                          <span className="font-semibold text-ink">{a.label}</span>
+                          {a.description && (
+                            <span className="text-body"> — {a.description}</span>
+                          )}
+                          <span className="text-muted">
+                            {" "}
+                            ·{" "}
+                            {new Date(`${a.annotation_date}T12:00:00`).toLocaleDateString(
+                              undefined,
+                              { year: "numeric", month: "short", day: "numeric" },
+                            )}
+                          </span>
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
             </div>
           );
         })()}

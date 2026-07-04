@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { isReportDue, type ReportRow } from "./reports";
 import { renderReportEmail, type ReportEmailInput } from "./report-email";
 import { getTrendSeries } from "./trends";
+import { getAnnotationsInWindow } from "./annotations";
 import { sendEmail } from "./email";
 import type { ServiceType } from "./services";
 
@@ -83,12 +84,20 @@ export async function buildReportEmail(
 
   const trends = await getTrendSeries(supabase, report.client_id);
 
+  // Annotations pinned within the reporting period (static bullet list in email).
+  const annotations = await getAnnotationsInWindow(
+    supabase,
+    report.client_id,
+    periodStart.slice(0, 10),
+  );
+
   const rendered = renderReportEmail({
     agency,
     client,
     services,
     metrics,
     activity: (activityRows ?? []) as ReportEmailInput["activity"],
+    annotations,
     trends,
     periodLabel: periodLabel(report.cadence, now),
   });

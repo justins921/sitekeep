@@ -156,6 +156,12 @@ export type ReportEmailInput = {
     category: string | null;
     performed_at: string;
   }>;
+  annotations: Array<{
+    annotation_date: string;
+    label: string;
+    description: string | null;
+    category: string | null;
+  }>;
   trends: TrendSeries;
   periodLabel: string;
 };
@@ -186,6 +192,24 @@ function trendsSection(trends: TrendSeries, services: ServiceType[]): string {
     <tr><td style="padding:20px 24px 0;">
       <div style="font:700 16px Arial,sans-serif;color:${INK};">Trends</div>
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:8px -6px 0;"><tr>${cells}</tr></table>
+    </td></tr>`;
+}
+
+function annotationsSection(annotations: ReportEmailInput["annotations"]): string {
+  if (!annotations || annotations.length === 0) return "";
+  const items = annotations
+    .map((a) => {
+      const when = new Date(`${a.annotation_date}T12:00:00`).toLocaleDateString();
+      return `<li style="font:400 13px Arial,sans-serif;color:${BODY};margin:0 0 6px;">
+        <strong style="color:${INK};">${escapeHtml(a.label)}</strong>${a.description ? ` — ${escapeHtml(a.description)}` : ""}
+        <span style="color:${MUTED};"> (${when})</span>
+      </li>`;
+    })
+    .join("");
+  return `
+    <tr><td style="padding:12px 24px 0;">
+      <div style="font:600 12px Arial,sans-serif;color:${MUTED};text-transform:uppercase;letter-spacing:.4px;">Notes this period</div>
+      <ul style="margin:8px 0 0;padding-left:18px;">${items}</ul>
     </td></tr>`;
 }
 
@@ -249,6 +273,7 @@ export function renderReportEmail(input: ReportEmailInput): {
         </td></tr>
         ${sections}
         ${trendsSection(input.trends, input.services)}
+        ${annotationsSection(input.annotations)}
         ${activitySection(input.activity)}
         <tr><td style="padding:24px;">
           <div style="border-top:1px solid ${LINE};padding-top:16px;text-align:center;font:500 12px Arial,sans-serif;color:${BODY};">

@@ -7,8 +7,10 @@ import { IncidentList, type IncidentEntry } from "@/components/metrics/MetricCar
 import { ServiceCard } from "@/components/metrics/ServiceCards";
 import { HealthCard } from "@/components/metrics/HealthCard";
 import { getClientHealth } from "@/lib/health-scores";
-import { TrendCharts } from "@/components/metrics/TrendCharts";
-import { getTrendSeries, TREND_KEYS } from "@/lib/trends";
+import { AnnotatedTrendCharts } from "@/components/metrics/AnnotatedTrendCharts";
+import { AnnotationManager } from "./AnnotationManager";
+import { getDatedTrendSeries, TREND_KEYS } from "@/lib/trends";
+import { getAnnotations } from "@/lib/annotations";
 import { createClient } from "@/lib/supabase/server";
 import { getViewContext } from "@/lib/view-context";
 import { ServiceToggles } from "./ServiceToggles";
@@ -93,7 +95,8 @@ export default async function ClientDetailPage({
   const enabledServices = SERVICE_TYPES.filter((t) => services[t]);
   const health = await getClientHealth(supabase, id);
 
-  const trends = await getTrendSeries(supabase, id);
+  const trends = await getDatedTrendSeries(supabase, id);
+  const annotations = await getAnnotations(supabase, id);
   const trendKeys = TREND_KEYS.filter((k) => services[k]);
 
   // Traffic (GA4) settings state for the detail-page field.
@@ -292,7 +295,7 @@ export default async function ClientDetailPage({
         </div>
       )}
 
-      {/* Trends */}
+      {/* Trends + annotations */}
       {trendKeys.length > 0 && (
         <div className="mt-12">
           <h2 className="text-xl font-bold tracking-tight">Trends</h2>
@@ -301,8 +304,15 @@ export default async function ClientDetailPage({
             data points.
           </p>
           <div className="mt-5">
-            <TrendCharts trends={trends} show={trendKeys} />
+            <AnnotatedTrendCharts
+              series={trends}
+              annotations={annotations}
+              show={trendKeys}
+            />
           </div>
+          {!readOnly && (
+            <AnnotationManager clientId={id} annotations={annotations} />
+          )}
         </div>
       )}
 

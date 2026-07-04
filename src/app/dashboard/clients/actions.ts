@@ -17,6 +17,7 @@ import {
   syncSubscriptionQuantity,
 } from "@/lib/billing";
 import { recordUptimeCheck, writeUptimeSnapshot } from "@/lib/uptime";
+import { detectSignificantSwings } from "@/lib/auto-annotations";
 
 export type ClientFormState = { error: string } | null;
 
@@ -265,7 +266,7 @@ export async function refreshMetricsAction(
   // RLS scopes this to the owner; a non-owned id returns null.
   const { data: client } = await supabase
     .from("clients")
-    .select("id, website_url, ga4_property_id")
+    .select("id, website_url, ga4_property_id, agency_id")
     .eq("id", clientId)
     .maybeSingle();
   if (!client) redirect("/dashboard");
@@ -316,6 +317,13 @@ export async function refreshMetricsAction(
       }
     }),
   );
+
+  // Auto-annotate any trend metric that swung >20% vs its previous snapshot.
+  try {
+    await detectSignificantSwings(supabase, clientId, client.agency_id, new Date());
+  } catch {
+    // best-effort — annotations are derived, never part of the refresh contract
+  }
 
   // Composite health score: recompute from the just-written snapshots (the SQL
   // function is the single source of truth) and store it as a 'health_score'

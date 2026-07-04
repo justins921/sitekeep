@@ -19,6 +19,12 @@ type PublicDashboard = {
     performed_at: string;
   }>;
   trends: TrendSeries;
+  annotations: Array<{
+    annotation_date: string;
+    label: string;
+    description: string | null;
+    category: string | null;
+  }>;
 };
 
 /**
@@ -46,6 +52,7 @@ export async function GET(req: NextRequest) {
     services: dash.services,
     metrics: dash.metrics,
     activity: dash.activity ?? [],
+    annotations: dash.annotations ?? [],
     trends: dash.trends ?? emptyTrends(),
     periodLabel: periodLabel("monthly", new Date()),
   });

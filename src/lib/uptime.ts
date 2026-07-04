@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { inspectCertificate } from "@/lib/metrics/security";
 import { sendEmail } from "@/lib/email";
 import { logActivity } from "@/lib/activity";
+import { insertAutoAnnotationOnce } from "@/lib/annotations";
 import type { UptimeData, UptimeIncidentSummary } from "@/lib/metrics/types";
 
 // Uptime + SSL-expiry monitoring. The cron path (service-role client) records
@@ -323,6 +324,15 @@ export async function runUptimeMonitoring(
         category: "incident",
         performedAt: now,
       });
+      // Pin an auto-annotation on the trend charts at the resolution date.
+      await insertAutoAnnotationOnce(supabase, {
+        clientId: client.id,
+        agencyId: client.agency_id,
+        date: now.toISOString().slice(0, 10),
+        label: "Downtime incident resolved",
+        description: `${client.website_url} recovered and is responding normally.`,
+        category: "incident",
+      });
       if (agency) {
         alerts++;
         await sendAgencyAlert(
@@ -424,6 +434,14 @@ export async function runSslExpiryChecks(
         description: `The certificate for ${client.website_url} is valid again (${days} days remaining).`,
         category: "incident",
         performedAt: now,
+      });
+      await insertAutoAnnotationOnce(supabase, {
+        clientId: client.id,
+        agencyId: client.agency_id,
+        date: now.toISOString().slice(0, 10),
+        label: "SSL certificate renewed",
+        description: `The certificate for ${client.website_url} is valid again.`,
+        category: "incident",
       });
     }
   }
