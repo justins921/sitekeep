@@ -317,6 +317,22 @@ export async function refreshMetricsAction(
     }),
   );
 
+  // Composite health score: recompute from the just-written snapshots (the SQL
+  // function is the single source of truth) and store it as a 'health_score'
+  // snapshot. Best-effort — a scoring hiccup must never fail the refresh.
+  try {
+    const { data: health } = await supabase.rpc("compute_client_health", {
+      p_client: clientId,
+    });
+    if (health) {
+      await supabase
+        .from("metric_snapshots")
+        .insert({ client_id: clientId, service_type: "health_score", data: health });
+    }
+  } catch {
+    // ignore — scoring is derived data, not part of the refresh contract
+  }
+
   revalidatePath(`/dashboard/clients/${clientId}`);
   return { ran: true, results };
 }

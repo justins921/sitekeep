@@ -2,14 +2,20 @@ import Link from "next/link";
 import { Badge, ButtonLink, Card, Spark } from "@/components/ui";
 import { listClients } from "@/lib/clients";
 import { getViewContext } from "@/lib/view-context";
+import { getLatestHealth } from "@/lib/health-scores";
+import { HealthBadge } from "@/components/metrics/HealthBadge";
 
 export default async function DashboardHome() {
-  const [clients, { viewingAs }] = await Promise.all([
+  const [clients, { supabase, viewingAs }] = await Promise.all([
     listClients(),
     getViewContext(),
   ]);
   const hasClients = clients.length > 0;
   const readOnly = Boolean(viewingAs);
+  const health = await getLatestHealth(
+    supabase,
+    clients.map((c) => c.id),
+  );
 
   return (
     <div>
@@ -58,11 +64,14 @@ export default async function DashboardHome() {
                       {c.website_url}
                     </p>
                   </Link>
-                  {c.is_active ? (
-                    <Badge tone="green">Active</Badge>
-                  ) : (
-                    <Badge tone="neutral">Paused</Badge>
-                  )}
+                  <div className="flex shrink-0 items-center gap-2">
+                    <HealthBadge score={health.get(c.id)?.score ?? null} size="sm" />
+                    {c.is_active ? (
+                      <Badge tone="green">Active</Badge>
+                    ) : (
+                      <Badge tone="neutral">Paused</Badge>
+                    )}
+                  </div>
                 </div>
 
                 <div className="mt-4 flex items-center justify-between border-t border-line pt-4">

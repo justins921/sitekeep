@@ -5,6 +5,8 @@ import { getLatestSnapshots } from "@/lib/metrics";
 import { SERVICE_TYPES, SERVICE_META } from "@/lib/services";
 import { IncidentList, type IncidentEntry } from "@/components/metrics/MetricCards";
 import { ServiceCard } from "@/components/metrics/ServiceCards";
+import { HealthCard } from "@/components/metrics/HealthCard";
+import { getClientHealth } from "@/lib/health-scores";
 import { TrendCharts } from "@/components/metrics/TrendCharts";
 import { getTrendSeries, TREND_KEYS } from "@/lib/trends";
 import { createClient } from "@/lib/supabase/server";
@@ -89,6 +91,7 @@ export default async function ClientDetailPage({
   const entitled = isEntitled(sub?.status);
 
   const enabledServices = SERVICE_TYPES.filter((t) => services[t]);
+  const health = await getClientHealth(supabase, id);
 
   const trends = await getTrendSeries(supabase, id);
   const trendKeys = TREND_KEYS.filter((k) => services[k]);
@@ -281,6 +284,13 @@ export default async function ClientDetailPage({
           </div>
         )}
       </div>
+
+      {/* Composite health score */}
+      {enabledServices.length > 0 && (
+        <div className="mt-8">
+          <HealthCard health={health} />
+        </div>
+      )}
 
       {/* Trends */}
       {trendKeys.length > 0 && (
