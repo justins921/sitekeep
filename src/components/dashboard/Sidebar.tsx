@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Avatar, Spark } from "@/components/ui";
 
-const nav = [
+const baseNav = [
   { href: "/dashboard", label: "Clients", exact: true, icon: "◧" },
   { href: "/dashboard/settings", label: "Branding", icon: "◑" },
   { href: "/dashboard/billing", label: "Billing", icon: "◈" },
@@ -14,11 +14,20 @@ const nav = [
 export function Sidebar({
   agencyName,
   userEmail,
+  isSuperAdmin = false,
+  viewingAs = null,
 }: {
   agencyName: string;
   userEmail: string;
+  isSuperAdmin?: boolean;
+  viewingAs?: string | null;
 }) {
   const pathname = usePathname();
+
+  // While impersonating, show only Clients (Branding/Billing are the admin's own
+  // and would mismatch the agency being viewed). The /admin entry is rendered
+  // server-side only for super-admins — never a client-side hide.
+  const nav = viewingAs ? baseNav.slice(0, 1) : baseNav;
 
   return (
     <aside className="flex w-64 shrink-0 flex-col border-r border-line bg-white">
@@ -50,6 +59,21 @@ export function Sidebar({
             </Link>
           );
         })}
+
+        {isSuperAdmin && !viewingAs && (
+          <Link
+            href="/admin"
+            className={cn(
+              "mt-2 flex items-center gap-3 rounded-xl border border-line px-3 py-2.5 text-sm font-medium transition-colors",
+              pathname.startsWith("/admin")
+                ? "bg-brand-50 text-brand"
+                : "text-body hover:bg-canvas-alt hover:text-ink",
+            )}
+          >
+            <span className="text-base leading-none opacity-70">⬡</span>
+            Admin
+          </Link>
+        )}
       </nav>
 
       <div className="border-t border-line p-3">

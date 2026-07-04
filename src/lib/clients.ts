@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { createClient as createSupabase } from "@/lib/supabase/server";
+import { getViewContext } from "@/lib/view-context";
 import { type ServiceType } from "@/lib/services";
 
 export { SERVICE_TYPES, SERVICE_META, type ServiceType } from "@/lib/services";
@@ -25,12 +26,18 @@ export type ClientService = {
   enabled: boolean;
 };
 
-/** List every client owned by the signed-in agency (RLS-scoped). */
+/**
+ * List clients for the effective agency (the signed-in agency, or the one a
+ * super-admin is viewing-as). Filters by agency_id explicitly: super-admins have
+ * cross-tenant read policies, so relying on RLS alone would leak every agency's
+ * clients into their own list.
+ */
 export async function listClients(): Promise<Client[]> {
-  const supabase = await createSupabase();
+  const { supabase, agency } = await getViewContext();
   const { data } = await supabase
     .from("clients")
     .select("*")
+    .eq("agency_id", agency.id)
     .order("created_at", { ascending: false });
   return (data ?? []) as Client[];
 }

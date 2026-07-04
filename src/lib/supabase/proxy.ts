@@ -4,8 +4,10 @@ import { NextResponse, type NextRequest } from "next/server";
 /**
  * Refreshes the Supabase auth session cookie on every request and enforces the
  * dashboard auth boundary:
- *  - unauthenticated users hitting /dashboard/* are redirected to /login
+ *  - unauthenticated users hitting /dashboard/* or /admin/* are sent to /login
  *  - authenticated users hitting /login or /signup are sent to /dashboard
+ * (The super-admin check for /admin lives in the route's server layout, which
+ * redirects non-admins to /dashboard without revealing the route exists.)
  */
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request });
@@ -38,7 +40,7 @@ export async function updateSession(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
-  if (!user && pathname.startsWith("/dashboard")) {
+  if (!user && (pathname.startsWith("/dashboard") || pathname.startsWith("/admin"))) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("redirectedFrom", pathname);

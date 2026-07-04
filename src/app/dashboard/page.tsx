@@ -1,10 +1,15 @@
 import Link from "next/link";
 import { Badge, ButtonLink, Card, Spark } from "@/components/ui";
 import { listClients } from "@/lib/clients";
+import { getViewContext } from "@/lib/view-context";
 
 export default async function DashboardHome() {
-  const clients = await listClients();
+  const [clients, { viewingAs }] = await Promise.all([
+    listClients(),
+    getViewContext(),
+  ]);
   const hasClients = clients.length > 0;
+  const readOnly = Boolean(viewingAs);
 
   return (
     <div>
@@ -15,7 +20,9 @@ export default async function DashboardHome() {
             Every client you keep on a maintenance retainer.
           </p>
         </div>
-        <ButtonLink href="/dashboard/clients/new">+ Add client</ButtonLink>
+        {!readOnly && (
+          <ButtonLink href="/dashboard/clients/new">+ Add client</ButtonLink>
+        )}
       </div>
 
       <div className="mt-8">
@@ -29,11 +36,13 @@ export default async function DashboardHome() {
               Add your first client to generate a branded dashboard and start
               turning maintenance into recurring revenue.
             </p>
-            <div className="mt-6">
-              <ButtonLink href="/dashboard/clients/new">
-                Add your first client
-              </ButtonLink>
-            </div>
+            {!readOnly && (
+              <div className="mt-6">
+                <ButtonLink href="/dashboard/clients/new">
+                  Add your first client
+                </ButtonLink>
+              </div>
+            )}
           </Card>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

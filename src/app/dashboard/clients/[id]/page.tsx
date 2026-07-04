@@ -2,12 +2,13 @@ import Link from "next/link";
 import { Badge, Button, ButtonLink, Card } from "@/components/ui";
 import { getClientWithServices } from "@/lib/clients";
 import { getLatestSnapshots } from "@/lib/metrics";
-import { SERVICE_TYPES } from "@/lib/services";
+import { SERVICE_TYPES, SERVICE_META } from "@/lib/services";
 import { IncidentList, type IncidentEntry } from "@/components/metrics/MetricCards";
 import { ServiceCard } from "@/components/metrics/ServiceCards";
 import { TrendCharts } from "@/components/metrics/TrendCharts";
 import { getTrendSeries, TREND_KEYS } from "@/lib/trends";
 import { createClient } from "@/lib/supabase/server";
+import { getViewContext } from "@/lib/view-context";
 import { ServiceToggles } from "./ServiceToggles";
 import { TrafficSettings } from "./TrafficSettings";
 import { getServiceAccount } from "@/lib/metrics/ga4";
@@ -43,6 +44,9 @@ export default async function ClientDetailPage({
   const { gated, subscribed, checkout, confirm } = await searchParams;
   const { client, services } = await getClientWithServices(id);
   const snapshots = await getLatestSnapshots(id);
+  // Read-only when a super-admin is viewing this client through "view as agency".
+  const { viewingAs } = await getViewContext();
+  const readOnly = Boolean(viewingAs);
 
   const supabase = await createClient();
   const [
@@ -169,12 +173,14 @@ export default async function ClientDetailPage({
           </a>
         </div>
 
-        <div className="flex items-center gap-2">
-          <ButtonLink href={`/dashboard/clients/${id}/edit`} variant="secondary" size="sm">
-            Edit
-          </ButtonLink>
-          <DeleteClientButton clientId={id} clientName={client.company_name} />
-        </div>
+        {!readOnly && (
+          <div className="flex items-center gap-2">
+            <ButtonLink href={`/dashboard/clients/${id}/edit`} variant="secondary" size="sm">
+              Edit
+            </ButtonLink>
+            <DeleteClientButton clientId={id} clientName={client.company_name} />
+          </div>
+        )}
       </div>
 
       {/* Summary */}
@@ -210,9 +216,23 @@ export default async function ClientDetailPage({
           Toggle what appears on this client&apos;s dashboard. Changes save instantly.
         </p>
         <div className="mt-5">
-          <ServiceToggles clientId={id} initial={services} />
+          {readOnly ? (
+            <div className="flex flex-wrap gap-2">
+              {enabledServices.length === 0 ? (
+                <span className="text-sm text-muted">No services enabled.</span>
+              ) : (
+                enabledServices.map((t) => (
+                  <Badge key={t} tone="brand">
+                    {SERVICE_META[t].label}
+                  </Badge>
+                ))
+              )}
+            </div>
+          ) : (
+            <ServiceToggles clientId={id} initial={services} />
+          )}
         </div>
-        {services.traffic && (
+        {services.traffic && !readOnly && (
           <div className="mt-4">
             <TrafficSettings
               clientId={id}
@@ -233,7 +253,9 @@ export default async function ClientDetailPage({
               Live data for the enabled services. This is what the client sees.
             </p>
           </div>
-          <RefreshButton clientId={id} hasEnabled={enabledServices.length > 0} />
+          {!readOnly && (
+            <RefreshButton clientId={id} hasEnabled={enabledServices.length > 0} />
+          )}
         </div>
 
         {enabledServices.length === 0 ? (
@@ -274,7 +296,9 @@ export default async function ClientDetailPage({
         </div>
       )}
 
-      {/* Management — agency-only, clearly separated from the client-facing metrics */}
+      {/* Management — agency-only, clearly separated from the client-facing metrics.
+          Hidden entirely in read-only "view as agency" support mode. */}
+      {!readOnly && (
       <div className="mt-16 rounded-[var(--radius-card-lg)] border border-line bg-canvas-alt/60 p-6 sm:p-8">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
           <h2 className="text-xl font-bold tracking-tight">Management</h2>
@@ -341,6 +365,7 @@ export default async function ClientDetailPage({
           </section>
         </div>
       </div>
+      )}
     </div>
   );
 }
