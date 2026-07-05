@@ -104,11 +104,42 @@ export type UptimeData = {
   last_incident: UptimeIncidentSummary | null;
 };
 
+/** One Search Console metric's current + preceding-window value + % change. */
+export type GscDelta = { value: number; prev: number; change_pct: number };
+export type GscQuery = {
+  query: string;
+  clicks: number;
+  impressions: number;
+  ctr: number; // percent, 0–100
+  position: number; // average position (lower is better)
+};
+export type GscDayPoint = { date: string; clicks: number; impressions: number };
+
+export type SearchConsoleData = {
+  connected: boolean; // false → clean "not connected" empty state
+  range_days: number;
+  site_url: string | null;
+  clicks: number;
+  impressions: number;
+  ctr: number; // percent, 0–100
+  position: number; // average position (lower is better)
+  deltas: {
+    clicks: GscDelta;
+    impressions: GscDelta;
+    ctr: GscDelta;
+    position: GscDelta;
+  };
+  top_queries: GscQuery[];
+  daily: GscDayPoint[]; // current window, per day
+  daily_prev: GscDayPoint[]; // preceding window, per day
+};
+
 export type ServiceDataMap = {
   page_speed: PageSpeedData;
   traffic: TrafficData;
   security: SecurityData;
   uptime: UptimeData;
+  search_console: SearchConsoleData;
 };
 
 /** A latest snapshot as read back for rendering. */

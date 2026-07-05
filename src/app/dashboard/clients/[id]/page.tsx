@@ -15,8 +15,9 @@ import { createClient } from "@/lib/supabase/server";
 import { getViewContext } from "@/lib/view-context";
 import { ServiceToggles } from "./ServiceToggles";
 import { TrafficSettings } from "./TrafficSettings";
+import { SearchConsoleSettings } from "./SearchConsoleSettings";
 import { getServiceAccount } from "@/lib/metrics/ga4";
-import type { TrafficData } from "@/lib/metrics/types";
+import type { SearchConsoleData, TrafficData } from "@/lib/metrics/types";
 import { DeleteClientButton } from "./DeleteClientButton";
 import { CopyLinkButton } from "./CopyLinkButton";
 import { RefreshButton } from "./RefreshButton";
@@ -60,6 +61,7 @@ export default async function ClientDetailPage({
     { data: requests },
     { data: activity },
     { data: trafficSvc },
+    { data: gscSvc },
   ] = await Promise.all([
     supabase
       .from("reports")
@@ -89,6 +91,12 @@ export default async function ClientDetailPage({
       .eq("client_id", id)
       .eq("service_type", "traffic")
       .maybeSingle(),
+    supabase
+      .from("client_services")
+      .select("config")
+      .eq("client_id", id)
+      .eq("service_type", "search_console")
+      .maybeSingle(),
   ]);
   const entitled = isEntitled(sub?.status);
 
@@ -107,6 +115,13 @@ export default async function ClientDetailPage({
   const trafficConnected =
     Boolean(snapshots.traffic) &&
     (snapshots.traffic!.data as TrafficData).demo === false;
+
+  // Search Console settings state (reuses the same service account as GA4).
+  const gscSiteUrl =
+    ((gscSvc?.config as { gsc_site_url?: string | null } | null)?.gsc_site_url) ?? null;
+  const gscConnected =
+    Boolean(snapshots.search_console) &&
+    (snapshots.search_console!.data as SearchConsoleData).connected === true;
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
   const publicUrl = `${siteUrl}/d/${client.slug}`;
@@ -245,6 +260,16 @@ export default async function ClientDetailPage({
               initialPropertyId={ga4PropertyId}
               serviceAccountEmail={ga4ServiceEmail}
               connected={trafficConnected}
+            />
+          </div>
+        )}
+        {services.search_console && !readOnly && (
+          <div className="mt-4">
+            <SearchConsoleSettings
+              clientId={id}
+              initialSiteUrl={gscSiteUrl}
+              serviceAccountEmail={ga4ServiceEmail}
+              connected={gscConnected}
             />
           </div>
         )}

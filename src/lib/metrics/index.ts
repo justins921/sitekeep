@@ -4,11 +4,12 @@ import type { ServiceResult, Snapshot } from "./types";
 import { runPageSpeed } from "./pagespeed";
 import { runSecurity } from "./security";
 import { runTraffic } from "./traffic";
+import { runSearchConsole } from "./search-console";
 
 export * from "./types";
 
 /** Extra per-run inputs a provider may need beyond the URL. */
-export type RunOptions = { ga4PropertyId?: string | null };
+export type RunOptions = { ga4PropertyId?: string | null; gscSiteUrl?: string | null };
 
 /** Provider registry — one entry per service_type.
  * `uptime` is driven by src/lib/uptime.ts (it needs DB access to log checks and
@@ -21,6 +22,7 @@ const PROVIDERS: Record<
   traffic: (url, opts) => runTraffic(url, opts.ga4PropertyId),
   security: (url) => runSecurity(url),
   uptime: async () => ({ ok: false, error: "uptime is handled by the uptime monitor" }),
+  search_console: (url, opts) => runSearchConsole(url, opts.gscSiteUrl),
 };
 
 export function runService(

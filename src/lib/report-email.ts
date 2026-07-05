@@ -1,7 +1,7 @@
 import "server-only";
 import type { ServiceType } from "@/lib/services";
 import { SERVICE_META } from "@/lib/services";
-import type { SecurityData, TrafficData, UptimeData } from "@/lib/metrics/types";
+import type { SearchConsoleData, SecurityData, TrafficData, UptimeData } from "@/lib/metrics/types";
 import { cls, ms, rate, secs } from "@/components/metrics/format";
 import { normalizeHex, readableText, safeAccent } from "@/lib/color";
 import { sparklineSvg } from "@/lib/sparkline";
@@ -110,6 +110,68 @@ function traffic(d: TrafficData, accent: string): string {
   return tiles + chartBlock;
 }
 
+function searchConsole(d: SearchConsoleData, accent: string): string {
+  if (!d.connected) {
+    return `<div style="border:1px solid ${LINE};border-radius:14px;padding:16px;font:400 13px Arial,sans-serif;color:${MUTED};">Search Console not connected.</div>`;
+  }
+  const tag = (delta?: { change_pct: number }) =>
+    delta ? `(${delta.change_pct > 0 ? "+" : ""}${delta.change_pct}%)` : "";
+  const tiles =
+    row([
+      card("Clicks", d.clicks.toLocaleString(), tag(d.deltas.clicks), INK),
+      card("Impressions", d.impressions.toLocaleString(), tag(d.deltas.impressions), INK),
+      card("Avg CTR", d.ctr.toFixed(1), "%", INK),
+    ]) +
+    row([
+      card("Avg position", d.position.toFixed(1), tag(d.deltas.position), INK),
+      card("", "", "", INK),
+      card("", "", "", INK),
+    ]);
+
+  const chart = comparisonLineSvg(
+    (d.daily ?? []).map((p) => p.clicks),
+    (d.daily_prev ?? []).map((p) => p.clicks),
+    { color: accent },
+  );
+  const chartBlock = chart
+    ? `<div style="padding:12px 6px 0;">
+        <div style="font:600 12px Arial,sans-serif;color:${INK};margin-bottom:6px;">Search clicks</div>
+        ${chart}
+        <div style="font:400 11px Arial,sans-serif;color:${MUTED};margin-top:4px;">Solid: last ${d.range_days} days · Dashed: preceding ${d.range_days} days</div>
+      </div>`
+    : "";
+
+  const rows = (d.top_queries ?? [])
+    .slice(0, 10)
+    .map(
+      (q) => `<tr>
+        <td style="padding:6px 8px;font:400 12px Arial,sans-serif;color:${INK};border-bottom:1px solid ${LINE};">${escapeHtml(q.query)}</td>
+        <td style="padding:6px 8px;font:600 12px Arial,sans-serif;color:${INK};text-align:right;border-bottom:1px solid ${LINE};">${q.clicks.toLocaleString()}</td>
+        <td style="padding:6px 8px;font:400 12px Arial,sans-serif;color:${MUTED};text-align:right;border-bottom:1px solid ${LINE};">${q.impressions.toLocaleString()}</td>
+        <td style="padding:6px 8px;font:400 12px Arial,sans-serif;color:${MUTED};text-align:right;border-bottom:1px solid ${LINE};">${q.ctr.toFixed(1)}%</td>
+        <td style="padding:6px 8px;font:400 12px Arial,sans-serif;color:${MUTED};text-align:right;border-bottom:1px solid ${LINE};">${q.position.toFixed(1)}</td>
+      </tr>`,
+    )
+    .join("");
+  const queriesBlock = rows
+    ? `<div style="padding:14px 6px 0;">
+        <div style="font:600 11px Arial,sans-serif;color:${MUTED};text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px;">Top queries</div>
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+          <tr>
+            <td style="padding:0 8px 4px;font:600 11px Arial,sans-serif;color:${MUTED};">Query</td>
+            <td style="padding:0 8px 4px;font:600 11px Arial,sans-serif;color:${MUTED};text-align:right;">Clicks</td>
+            <td style="padding:0 8px 4px;font:600 11px Arial,sans-serif;color:${MUTED};text-align:right;">Impr.</td>
+            <td style="padding:0 8px 4px;font:600 11px Arial,sans-serif;color:${MUTED};text-align:right;">CTR</td>
+            <td style="padding:0 8px 4px;font:600 11px Arial,sans-serif;color:${MUTED};text-align:right;">Pos.</td>
+          </tr>
+          ${rows}
+        </table>
+      </div>`
+    : "";
+
+  return tiles + chartBlock + queriesBlock;
+}
+
 function uptime(d: UptimeData): string {
   const statusText = { up: "Operational", down: "Down", unknown: "No data yet" }[d.status];
   const statusColor = { up: "#6cad45", down: "#cb52cc", unknown: INK }[d.status];
@@ -134,6 +196,7 @@ function serviceSection(type: ServiceType, data: unknown, accent: string): strin
   } else if (type === "page_speed") body = pageSpeed(data);
   else if (type === "security") body = security(data as SecurityData);
   else if (type === "uptime") body = uptime(data as UptimeData);
+  else if (type === "search_console") body = searchConsole(data as SearchConsoleData, accent);
   else body = traffic(data as TrafficData, accent);
 
   return `

@@ -285,6 +285,11 @@ export async function refreshMetricsAction(
     ?.config as { ga4_property_id?: string | null } | null | undefined;
   const ga4PropertyId = trafficConfig?.ga4_property_id ?? client.ga4_property_id;
 
+  // Search Console property (URL-prefix or sc-domain) from the service config.
+  const gscConfig = (enabledRows ?? []).find((r) => r.service_type === "search_console")
+    ?.config as { gsc_site_url?: string | null } | null | undefined;
+  const gscSiteUrl = gscConfig?.gsc_site_url ?? null;
+
   const results = await Promise.all(
     enabled.map(async (service_type) => {
       try {
@@ -298,6 +303,7 @@ export async function refreshMetricsAction(
 
         const result = await runService(service_type, client.website_url, {
           ga4PropertyId,
+          gscSiteUrl,
         });
         if (!result.ok) return { service_type, ok: false, error: result.error };
 

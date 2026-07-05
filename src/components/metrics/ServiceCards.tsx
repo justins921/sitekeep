@@ -11,8 +11,10 @@ import { normalizePageSpeed } from "@/lib/metrics/normalize";
 import { cls, ms, rate, ratingAccent, secs, timeAgo } from "./format";
 import type {
   CoreWebVitals,
+  GscDelta,
   PageSpeedData,
   PageSpeedStrategyData,
+  SearchConsoleData,
   SecurityData,
   TrafficData,
   TrafficDelta,
@@ -497,6 +499,132 @@ export function UptimeCard({
   );
 }
 
+// --------------------------------------------------------- Search Console
+
+function GscDeltaTag({ delta }: { delta?: GscDelta }) {
+  if (!delta) return null;
+  const up = delta.change_pct > 0;
+  const flat = delta.change_pct === 0;
+  // change_pct is already goodness-oriented (position is pre-inverted upstream),
+  // so positive always means "better".
+  const color = flat ? "text-muted" : up ? "text-accent-green" : "text-accent-magenta";
+  return (
+    <span className={"text-xs font-medium " + color}>
+      {up ? "↑" : flat ? "→" : "↓"} {Math.abs(delta.change_pct)}%
+    </span>
+  );
+}
+
+function GscTile({ label, value, hint, delta }: { label: string; value: string; hint?: string; delta?: GscDelta }) {
+  return (
+    <div className="rounded-xl border border-line p-4">
+      <p className="text-xs font-medium text-muted">{label}</p>
+      <div className="mt-1.5 flex items-baseline justify-between gap-2">
+        <span className="text-2xl font-bold text-ink">{value}</span>
+        <GscDeltaTag delta={delta} />
+      </div>
+      {hint && <p className="mt-0.5 text-[11px] text-faint">{hint}</p>}
+    </div>
+  );
+}
+
+export function SearchConsoleCard({
+  data,
+  capturedAt,
+  accentColor,
+}: {
+  data: SearchConsoleData;
+  capturedAt?: string;
+  accentColor?: string;
+}) {
+  const color = accentColor ?? "#0068ff";
+
+  if (!data.connected) {
+    return (
+      <Card className="p-6">
+        <CardHeader title="Search / SEO" accentColor={accentColor} />
+        <p className="text-sm text-muted">
+          Search Console not connected. Add the service-account email as a user on
+          the property and map it in settings to see clicks, impressions, and
+          ranking positions.
+        </p>
+      </Card>
+    );
+  }
+
+  const current = data.daily.map((d) => d.clicks);
+  const preceding = data.daily_prev.map((d) => d.clicks);
+  const dates = data.daily.map((d) => d.date);
+
+  return (
+    <Card className="p-6">
+      <CardHeader title="Search / SEO" accentColor={accentColor} updated={capturedAt} />
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <GscTile label="Clicks" value={data.clicks.toLocaleString()} delta={data.deltas.clicks} />
+        <GscTile label="Impressions" value={data.impressions.toLocaleString()} delta={data.deltas.impressions} />
+        <GscTile label="Avg CTR" value={`${data.ctr.toFixed(1)}%`} delta={data.deltas.ctr} />
+        <GscTile
+          label="Avg position"
+          value={data.position.toFixed(1)}
+          hint="lower is better"
+          delta={data.deltas.position}
+        />
+      </div>
+
+      {current.length >= 2 && (
+        <div className="mt-6">
+          <p className="mb-3 text-sm font-semibold text-ink">Search clicks</p>
+          <LineChart
+            current={current}
+            preceding={preceding}
+            dates={dates}
+            color={color}
+            currentLabel={`Last ${data.range_days} days`}
+            precedingLabel={`Preceding ${data.range_days} days`}
+          />
+          <div className="mt-2">
+            <ComparisonLegend
+              color={color}
+              currentLabel={`Last ${data.range_days} days`}
+              precedingLabel={`Preceding ${data.range_days} days`}
+            />
+          </div>
+        </div>
+      )}
+
+      {data.top_queries.length > 0 && (
+        <div className="mt-6 border-t border-line pt-5">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted">Top queries</p>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[420px] text-left text-sm">
+              <thead>
+                <tr className="text-xs text-muted">
+                  <th className="pb-2 font-medium">Query</th>
+                  <th className="pb-2 text-right font-medium">Clicks</th>
+                  <th className="pb-2 text-right font-medium">Impr.</th>
+                  <th className="pb-2 text-right font-medium">CTR</th>
+                  <th className="pb-2 text-right font-medium">Pos.</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.top_queries.map((q, i) => (
+                  <tr key={i} className="border-t border-line">
+                    <td className="max-w-[220px] truncate py-2 pr-3 text-ink">{q.query}</td>
+                    <td className="py-2 text-right font-medium text-ink">{q.clicks.toLocaleString()}</td>
+                    <td className="py-2 text-right text-muted">{q.impressions.toLocaleString()}</td>
+                    <td className="py-2 text-right text-muted">{q.ctr.toFixed(1)}%</td>
+                    <td className="py-2 text-right text-muted">{q.position.toFixed(1)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </Card>
+  );
+}
+
 // -------------------------------------------------------- dispatcher
 
 function EmptyCard({ title, accentColor }: { title: string; accentColor?: string }) {
@@ -531,6 +659,9 @@ export function ServiceCard({
   }
   if (type === "traffic") {
     return <TrafficCard data={data as TrafficData} capturedAt={capturedAt} accentColor={accentColor} />;
+  }
+  if (type === "search_console") {
+    return <SearchConsoleCard data={data as SearchConsoleData} capturedAt={capturedAt} accentColor={accentColor} />;
   }
   return <SecurityCard data={data as SecurityData} capturedAt={capturedAt} accentColor={accentColor} />;
 }
