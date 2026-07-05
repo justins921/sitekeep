@@ -15,11 +15,13 @@ export function SearchConsoleSettings({
   initialSiteUrl,
   serviceAccountEmail,
   connected,
+  connectionError,
 }: {
   clientId: string;
   initialSiteUrl: string | null;
   serviceAccountEmail: string | null;
   connected: boolean;
+  connectionError?: string | null;
 }) {
   const router = useRouter();
   const [value, setValue] = useState(initialSiteUrl ?? "");
@@ -65,12 +67,21 @@ export function SearchConsoleSettings({
           {pending ? "Saving…" : "Save"}
         </Button>
       </div>
+      {connectionError && !connected && (
+        <div className="mt-3 rounded-xl border border-pink-100 bg-fill-pink px-3.5 py-2.5">
+          <p className="text-xs font-semibold text-accent-magenta">
+            Last refresh couldn&apos;t connect
+          </p>
+          <p className="mt-0.5 text-xs text-body">{connectionError}</p>
+        </div>
+      )}
       {serviceAccountEmail ? (
         <p className="mt-3 text-xs text-muted">
           In Search Console →{" "}
           <span className="font-medium text-ink">Settings → Users and permissions</span>, add{" "}
           <span className="font-medium text-ink">{serviceAccountEmail}</span> as a user, then paste
-          the property URL here.
+          the property URL here. For a <span className="font-medium text-ink">Domain</span> property,
+          use <code>sc-domain:example.com</code>.
         </p>
       ) : (
         <p className="mt-3 text-xs text-muted">

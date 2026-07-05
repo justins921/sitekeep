@@ -117,6 +117,8 @@ export type GscDayPoint = { date: string; clicks: number; impressions: number };
 
 export type SearchConsoleData = {
   connected: boolean; // false → clean "not connected" empty state
+  /** When not connected due to an API/permission error, a user-facing reason. */
+  error?: string | null;
   range_days: number;
   site_url: string | null;
   clicks: number;

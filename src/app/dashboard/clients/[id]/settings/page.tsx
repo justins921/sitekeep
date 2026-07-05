@@ -55,9 +55,9 @@ export default async function ClientSettingsTab({
     Boolean(snapshots.traffic) && (snapshots.traffic!.data as TrafficData).demo === false;
   const gscSiteUrl =
     ((gscSvc?.config as { gsc_site_url?: string | null } | null)?.gsc_site_url) ?? null;
-  const gscConnected =
-    Boolean(snapshots.search_console) &&
-    (snapshots.search_console!.data as SearchConsoleData).connected === true;
+  const gscData = snapshots.search_console?.data as SearchConsoleData | undefined;
+  const gscConnected = gscData?.connected === true;
+  const gscError = gscData && !gscData.connected ? gscData.error ?? null : null;
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
   const publicUrl = `${siteUrl}/d/${client.slug}`;
@@ -90,6 +90,7 @@ export default async function ClientSettingsTab({
               initialSiteUrl={gscSiteUrl}
               serviceAccountEmail={ga4ServiceEmail}
               connected={gscConnected}
+              connectionError={gscError}
             />
           </div>
         )}

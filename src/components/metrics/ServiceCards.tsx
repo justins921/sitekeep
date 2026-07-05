@@ -543,11 +543,20 @@ export function SearchConsoleCard({
     return (
       <Card className="p-6">
         <CardHeader title="Search / SEO" accentColor={accentColor} />
-        <p className="text-sm text-muted">
-          Search Console not connected. Add the service-account email as a user on
-          the property and map it in settings to see clicks, impressions, and
-          ranking positions.
-        </p>
+        {data.error ? (
+          <>
+            <p className="text-sm font-medium text-accent-magenta">
+              Couldn&apos;t connect Search Console.
+            </p>
+            <p className="mt-1 text-sm text-muted">{data.error}</p>
+          </>
+        ) : (
+          <p className="text-sm text-muted">
+            Search Console not connected. Add the service-account email as a user on
+            the property and map it in settings to see clicks, impressions, and
+            ranking positions.
+          </p>
+        )}
       </Card>
     );
   }

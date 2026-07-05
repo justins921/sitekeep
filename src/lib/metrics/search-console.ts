@@ -22,10 +22,26 @@ const positionDelta = (value: number, prev: number): GscDelta => ({
   change_pct: prev > 0 ? Math.round(((prev - value) / prev) * 100) : 0,
 });
 
-function notConnected(siteUrl: string | null): SearchConsoleData {
+/** Turn a raw Search Console API error into a specific, actionable message. */
+function friendlyGscError(raw: string): string {
+  const m = raw.toLowerCase();
+  if (m.includes("has not been used") || m.includes("is disabled") || m.includes("accessnotconfigured")) {
+    return "The Search Console API isn't enabled in the Google Cloud project for this service account. Enable it, wait ~1 minute, then refresh.";
+  }
+  if (m.includes("permission") || m.includes("forbidden") || m.includes("403")) {
+    return "The service account isn't a verified user on this exact property. In Search Console → Settings → Users and permissions, add the service-account email — and make sure the property here matches exactly. If your property is a Domain property, use the sc-domain:example.com form instead of the https:// URL.";
+  }
+  if (m.includes("not found") || m.includes("invalid") || m.includes("400")) {
+    return "Search Console couldn't find this property. Check the URL, or use the sc-domain:example.com form for a Domain property.";
+  }
+  return raw;
+}
+
+function notConnected(siteUrl: string | null, error?: string | null): SearchConsoleData {
   const zero: GscDelta = { value: 0, prev: 0, change_pct: 0 };
   return {
     connected: false,
+    error: error ?? null,
     range_days: RANGE_DAYS,
     site_url: siteUrl,
     clicks: 0,
@@ -83,10 +99,8 @@ export async function runSearchConsole(
       },
     };
   } catch (err) {
-    console.warn(
-      `[search_console] read failed for ${site}; showing not-connected.`,
-      err instanceof Error ? err.message : err,
-    );
-    return { ok: true, data: notConnected(site) };
+    const raw = err instanceof Error ? err.message : String(err);
+    console.warn(`[search_console] read failed for ${site}; showing not-connected.`, raw);
+    return { ok: true, data: notConnected(site, friendlyGscError(raw)) };
   }
 }
