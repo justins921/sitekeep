@@ -89,6 +89,13 @@ export default async function ClientDashboardTab({
         </div>
       )}
 
+      {/* Composite health score — leads the dashboard */}
+      {enabledServices.length > 0 && (
+        <div className="mb-10">
+          <HealthCard health={health} />
+        </div>
+      )}
+
       {/* Metrics */}
       <div>
         <div className="flex items-end justify-between gap-4">
@@ -130,13 +137,6 @@ export default async function ClientDashboardTab({
           </div>
         )}
       </div>
-
-      {/* Composite health score */}
-      {enabledServices.length > 0 && (
-        <div className="mt-8">
-          <HealthCard health={health} />
-        </div>
-      )}
 
       {/* Trends + annotations */}
       {trendKeys.length > 0 && (

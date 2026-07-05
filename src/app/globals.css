@@ -26,12 +26,13 @@
   --color-accent-orange: #e87c2e;
   --color-accent-magenta: #cb52cc;
   --color-accent-green: #6cad45;
+  --color-accent-red: #e5484d;   /* "bad" on the green/amber/red value scale */
 
   /* Ink / text */
   --color-ink: #0e213d;      /* headings — deep navy */
   --color-body: #404040;     /* body copy */
-  --color-muted: #757575;    /* secondary text */
-  --color-faint: #b8b8b8;    /* placeholders / very light text */
+  --color-muted: #656565;    /* secondary text — AA on white */
+  --color-faint: #767676;    /* tertiary / hint text — AA on white */
 
   /* Surfaces */
   --color-surface: #ffffff;
@@ -44,6 +45,7 @@
   --color-fill-pink: #fdf0f6;
   --color-fill-green: #eefbf3;
   --color-fill-violet: #f1eefe;
+  --color-fill-red: #fdECEC;
 
   /* Typography */
   --font-sans: "Satoshi", "Inter", ui-sans-serif, system-ui, Arial, sans-serif;

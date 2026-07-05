@@ -56,13 +56,13 @@ export default function LineChartImpl({
         <XAxis
           dataKey="label"
           tickFormatter={fmtDate}
-          tick={{ fontSize: 11, fill: "#757575" }}
+          tick={{ fontSize: 11, fill: "#646464" }}
           tickLine={false}
           axisLine={{ stroke: "#e5e5e5" }}
           minTickGap={28}
         />
         <YAxis
-          tick={{ fontSize: 11, fill: "#757575" }}
+          tick={{ fontSize: 11, fill: "#646464" }}
           tickLine={false}
           axisLine={false}
           width={44}

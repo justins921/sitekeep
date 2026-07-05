@@ -3,8 +3,38 @@ export type Rating = "good" | "ni" | "poor" | "none";
 export const ratingAccent: Record<Rating, string> = {
   good: "text-accent-green",
   ni: "text-accent-orange",
-  poor: "text-accent-magenta",
+  poor: "text-accent-red",
   none: "text-ink",
+};
+
+// ---- Delta direction → good/bad, decoupled from the raw up/down arrow --------
+// A metric's number can go up or down (the arrow), and that movement can be good
+// or bad depending on whether higher or lower is better (the color). "Avg
+// position" is lower-is-better: a downward move is an improvement and must read
+// green. These pure helpers are unit-tested.
+
+export type DeltaDir = "up" | "down" | "flat";
+export type DeltaTone = "good" | "bad" | "flat";
+
+/** Which way the number moved (arrow), independent of good/bad. */
+export function deltaDir(changePct: number): DeltaDir {
+  if (changePct > 0) return "up";
+  if (changePct < 0) return "down";
+  return "flat";
+}
+
+/** Whether the move is good/bad given the metric's direction preference. */
+export function deltaTone(changePct: number, lowerIsBetter = false): DeltaTone {
+  if (changePct === 0) return "flat";
+  const improved = lowerIsBetter ? changePct < 0 : changePct > 0;
+  return improved ? "good" : "bad";
+}
+
+export const DELTA_ARROW: Record<DeltaDir, string> = { up: "↑", down: "↓", flat: "→" };
+export const DELTA_TONE_CLASS: Record<DeltaTone, string> = {
+  good: "text-accent-green",
+  bad: "text-accent-red",
+  flat: "text-muted",
 };
 
 /** Core Web Vitals thresholds (Google's good / needs-improvement / poor). */
@@ -29,7 +59,7 @@ export function scoreAccent(score: number | null): string {
   if (score === null) return "text-ink";
   if (score >= 90) return "text-accent-green";
   if (score >= 50) return "text-accent-orange";
-  return "text-accent-magenta";
+  return "text-accent-red";
 }
 
 // `== null` intentionally covers both null and undefined (a snapshot may omit a

@@ -29,7 +29,7 @@ export async function buildReportEmail(
 ) {
   const { data: client } = await supabase
     .from("clients")
-    .select("id, company_name, website_url, agency_id")
+    .select("id, company_name, website_url, agency_id, slug")
     .eq("id", report.client_id)
     .single();
   if (!client) return null;
@@ -91,6 +91,7 @@ export async function buildReportEmail(
     periodStart.slice(0, 10),
   );
 
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
   const rendered = renderReportEmail({
     agency,
     client,
@@ -100,6 +101,8 @@ export async function buildReportEmail(
     annotations,
     trends,
     periodLabel: periodLabel(report.cadence, now),
+    contactEmail: replyTo,
+    publicUrl: `${siteUrl}/d/${client.slug}`,
   });
   // fromName = the agency, so the client sees them as the sender.
   return { ...rendered, fromName: agency.name as string, replyTo };

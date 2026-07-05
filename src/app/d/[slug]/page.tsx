@@ -5,6 +5,8 @@ import { Card } from "@/components/ui";
 import { type ServiceType } from "@/lib/services";
 import { IncidentList, type IncidentEntry } from "@/components/metrics/MetricCards";
 import { ServiceCard } from "@/components/metrics/ServiceCards";
+import { HealthCard } from "@/components/metrics/HealthCard";
+import type { HealthSnapshot } from "@/lib/health-scores";
 import { AnnotatedTrendCharts } from "@/components/metrics/AnnotatedTrendCharts";
 import { TREND_KEYS, datedFromRpc, type TrendKey, type TrendSeries } from "@/lib/trends";
 import { categoryMeta, type PublicAnnotation } from "@/lib/annotations";
@@ -14,8 +16,9 @@ import { RequestChangeForm } from "./RequestChangeForm";
 
 type PublicDashboard = {
   client: { company_name: string; website_url: string; logo_url: string | null };
-  agency: { name: string; logo_url: string | null; brand_color: string };
+  agency: { name: string; logo_url: string | null; brand_color: string; contact_email: string | null };
   services: ServiceType[];
+  health: HealthSnapshot | null;
   metrics: Partial<Record<ServiceType, unknown>>;
   updated: Partial<Record<ServiceType, string>>;
   incidents: IncidentEntry[];
@@ -117,6 +120,13 @@ export default async function PublicDashboardPage({
             </span>
           )}
         </div>
+
+        {/* Health score hero — leads the dashboard */}
+        {dash.health && dash.health.score !== null && (
+          <div className="mt-6">
+            <HealthCard health={dash.health} />
+          </div>
+        )}
 
         {/* Metrics per enabled service — premium multi-column card grid */}
         <div className="mt-8">
@@ -255,7 +265,8 @@ export default async function PublicDashboardPage({
 
         {/* Request a change */}
         <div
-          className="mt-10 border-t-2 pt-6"
+          id="request"
+          className="mt-10 scroll-mt-6 border-t-2 pt-6"
           style={{ borderColor: withAlpha(brand, 0.25) }}
         >
           <h3 className="text-lg font-bold text-ink" style={{ color: accent }}>
@@ -269,11 +280,24 @@ export default async function PublicDashboardPage({
           </div>
         </div>
 
-        {/* Agency footer — no SiteKeep branding */}
+        {/* Agency footer — fully white-label, no SiteKeep branding */}
         <footer className="mt-14 border-t border-line pt-6 text-center">
-          <p className="text-sm font-medium text-ink">
-            Maintained by {dash.agency.name}
-          </p>
+          <p className="text-sm font-semibold text-ink">Maintained by {dash.agency.name}</p>
+          <div className="mt-1 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-sm text-muted">
+            {dash.agency.contact_email && (
+              <a
+                href={`mailto:${dash.agency.contact_email}`}
+                className="hover:underline"
+                style={{ color: accent }}
+              >
+                {dash.agency.contact_email}
+              </a>
+            )}
+            {dash.agency.contact_email && <span className="text-faint">·</span>}
+            <a href="#request" className="hover:underline" style={{ color: accent }}>
+              Report an issue
+            </a>
+          </div>
         </footer>
       </div>
     </main>

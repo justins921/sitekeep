@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Sidebar } from "@/components/dashboard/Sidebar";
 import { getViewContext } from "@/lib/view-context";
 import { exitViewAsAction } from "@/app/admin/actions";
@@ -35,6 +36,20 @@ export default async function DashboardLayout({
           </div>
         )}
         <div className="mx-auto max-w-6xl px-4 py-8 sm:px-8 sm:py-10">{children}</div>
+        <footer className="mx-auto max-w-6xl px-4 pb-10 sm:px-8">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-6 text-sm text-muted">
+            <span className="font-medium text-ink">{agency.name}</span>
+            <div className="flex items-center gap-4">
+              <Link href="/terms" className="hover:text-ink">
+                Terms
+              </Link>
+              <Link href="/privacy" className="hover:text-ink">
+                Privacy
+              </Link>
+              <span className="text-faint">Powered by SiteKeep</span>
+            </div>
+          </div>
+        </footer>
       </main>
     </div>
   );

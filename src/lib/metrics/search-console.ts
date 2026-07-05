@@ -8,18 +8,13 @@ import {
 
 const RANGE_DAYS = 28;
 
+// Raw percentage change (value − prev). "Lower is better" metrics like avg
+// position are handled in the UI via a lowerIsBetter flag on the delta, so the
+// stored change stays raw and the arrow reflects the true number movement.
 const delta = (value: number, prev: number): GscDelta => ({
   value,
   prev,
   change_pct: prev > 0 ? Math.round(((value - prev) / prev) * 100) : value > 0 ? 100 : 0,
-});
-
-/** Position delta: lower is better, so express change as (prev - value). */
-const positionDelta = (value: number, prev: number): GscDelta => ({
-  value,
-  prev,
-  // Positive change_pct = improvement (moved up the results).
-  change_pct: prev > 0 ? Math.round(((prev - value) / prev) * 100) : 0,
 });
 
 /** Turn a raw Search Console API error into a specific, actionable message. */
@@ -91,7 +86,7 @@ export async function runSearchConsole(
           clicks: delta(current.clicks, prior.clicks),
           impressions: delta(current.impressions, prior.impressions),
           ctr: delta(current.ctr, prior.ctr),
-          position: positionDelta(current.position, prior.position),
+          position: delta(current.position, prior.position),
         },
         top_queries: topQueries,
         daily,

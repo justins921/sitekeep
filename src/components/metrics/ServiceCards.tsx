@@ -8,7 +8,18 @@ import { LineChart, ComparisonLegend } from "@/components/charts/LineChart";
 import { type RiskLevel } from "@/lib/charts";
 import { SERVICE_META, type ServiceType } from "@/lib/services";
 import { normalizePageSpeed } from "@/lib/metrics/normalize";
-import { cls, ms, rate, ratingAccent, secs, timeAgo } from "./format";
+import {
+  cls,
+  ms,
+  rate,
+  ratingAccent,
+  secs,
+  timeAgo,
+  deltaDir,
+  deltaTone,
+  DELTA_ARROW,
+  DELTA_TONE_CLASS,
+} from "./format";
 import type {
   CoreWebVitals,
   GscDelta,
@@ -189,14 +200,20 @@ function fmtDuration(sec: number): string {
   return `${m}m ${r}s`;
 }
 
-function DeltaTag({ delta }: { delta?: TrafficDelta }) {
+function DeltaTag({
+  delta,
+  lowerIsBetter = false,
+}: {
+  delta?: TrafficDelta;
+  lowerIsBetter?: boolean;
+}) {
   if (!delta) return null;
-  const up = delta.change_pct > 0;
-  const flat = delta.change_pct === 0;
-  const color = flat ? "text-muted" : up ? "text-accent-green" : "text-accent-magenta";
+  // Arrow follows the raw number movement; color follows whether that's good.
+  const dir = deltaDir(delta.change_pct);
+  const tone = deltaTone(delta.change_pct, lowerIsBetter);
   return (
-    <span className={"text-xs font-medium " + color}>
-      {up ? "↑" : flat ? "→" : "↓"} {Math.abs(delta.change_pct)}%
+    <span className={"text-xs font-medium " + DELTA_TONE_CLASS[tone]}>
+      {DELTA_ARROW[dir]} {Math.abs(delta.change_pct)}%
     </span>
   );
 }
@@ -335,7 +352,7 @@ export function SecurityCard({
           <p
             className={
               "mt-1 text-lg font-bold " +
-              (data.https_enforced ? "text-accent-green" : "text-accent-magenta")
+              (data.https_enforced ? "text-accent-green" : "text-accent-red")
             }
           >
             {data.https_enforced ? "Yes" : "No"}
@@ -368,7 +385,7 @@ export function SecurityCard({
           const ok = data.headers[key];
           return (
             <li key={key} className="flex items-center gap-2 text-sm">
-              <span className={ok ? "text-accent-green" : "text-accent-magenta"}>
+              <span className={ok ? "text-accent-green" : "text-accent-red"}>
                 {ok ? "✓" : "✕"}
               </span>
               <span className="text-body">{label}</span>
@@ -384,7 +401,7 @@ export function SecurityCard({
             <p
               className={
                 "mt-1 text-lg font-bold " +
-                (sb.threats.length === 0 ? "text-accent-green" : "text-accent-magenta")
+                (sb.threats.length === 0 ? "text-accent-green" : "text-accent-red")
               }
             >
               {sb.threats.length === 0 ? "Clean" : `${sb.threats.length} threat(s)`}
@@ -393,7 +410,7 @@ export function SecurityCard({
           {sb.threats.length > 0 && (
             <div className="rounded-xl border border-line p-4">
               <p className="text-xs font-medium text-muted">Threat types</p>
-              <p className="mt-1 text-sm font-medium text-accent-magenta">
+              <p className="mt-1 text-sm font-medium text-accent-red">
                 {sb.threats.join(", ")}
               </p>
             </div>
@@ -434,7 +451,7 @@ export function UptimeCard({
         updated={empty ? undefined : capturedAt}
         badge={
           empty ? undefined : (
-            <Badge tone={data!.status === "up" ? "green" : "magenta"}>
+            <Badge tone={data!.status === "up" ? "green" : "red"}>
               {data!.status === "up" ? "Operational" : "Down"}
             </Badge>
           )
@@ -456,7 +473,7 @@ export function UptimeCard({
                     ? "text-accent-green"
                     : (data!.uptime_pct ?? 0) >= 99
                       ? "text-accent-orange"
-                      : "text-accent-magenta")
+                      : "text-accent-red")
                 }
               >
                 {data!.uptime_pct === null ? "—" : data!.uptime_pct.toFixed(2)}
@@ -480,7 +497,7 @@ export function UptimeCard({
 
           {/* status-page-style bar: proportion up vs down over the window */}
           <div className="mt-5">
-            <div className="flex h-3 overflow-hidden rounded-full bg-fill-pink">
+            <div className="flex h-3 overflow-hidden rounded-full bg-fill-red">
               <div
                 className="h-full rounded-full bg-accent-green"
                 style={{ width: `${Math.max(0, Math.min(100, data!.uptime_pct ?? 0))}%` }}
@@ -501,27 +518,44 @@ export function UptimeCard({
 
 // --------------------------------------------------------- Search Console
 
-function GscDeltaTag({ delta }: { delta?: GscDelta }) {
+function GscDeltaTag({
+  delta,
+  lowerIsBetter = false,
+}: {
+  delta?: GscDelta;
+  lowerIsBetter?: boolean;
+}) {
   if (!delta) return null;
-  const up = delta.change_pct > 0;
-  const flat = delta.change_pct === 0;
-  // change_pct is already goodness-oriented (position is pre-inverted upstream),
-  // so positive always means "better".
-  const color = flat ? "text-muted" : up ? "text-accent-green" : "text-accent-magenta";
+  // Raw delta drives the arrow; goodness (with lower-is-better for position)
+  // drives the color — so an improving position shows a green down-arrow.
+  const dir = deltaDir(delta.change_pct);
+  const tone = deltaTone(delta.change_pct, lowerIsBetter);
   return (
-    <span className={"text-xs font-medium " + color}>
-      {up ? "↑" : flat ? "→" : "↓"} {Math.abs(delta.change_pct)}%
+    <span className={"text-xs font-medium " + DELTA_TONE_CLASS[tone]}>
+      {DELTA_ARROW[dir]} {Math.abs(delta.change_pct)}%
     </span>
   );
 }
 
-function GscTile({ label, value, hint, delta }: { label: string; value: string; hint?: string; delta?: GscDelta }) {
+function GscTile({
+  label,
+  value,
+  hint,
+  delta,
+  lowerIsBetter = false,
+}: {
+  label: string;
+  value: string;
+  hint?: string;
+  delta?: GscDelta;
+  lowerIsBetter?: boolean;
+}) {
   return (
     <div className="rounded-xl border border-line p-4">
       <p className="text-xs font-medium text-muted">{label}</p>
       <div className="mt-1.5 flex items-baseline justify-between gap-2">
         <span className="text-2xl font-bold text-ink">{value}</span>
-        <GscDeltaTag delta={delta} />
+        <GscDeltaTag delta={delta} lowerIsBetter={lowerIsBetter} />
       </div>
       {hint && <p className="mt-0.5 text-[11px] text-faint">{hint}</p>}
     </div>
@@ -545,7 +579,7 @@ export function SearchConsoleCard({
         <CardHeader title="Search / SEO" accentColor={accentColor} />
         {data.error ? (
           <>
-            <p className="text-sm font-medium text-accent-magenta">
+            <p className="text-sm font-medium text-accent-red">
               Couldn&apos;t connect Search Console.
             </p>
             <p className="mt-1 text-sm text-muted">{data.error}</p>
@@ -577,6 +611,7 @@ export function SearchConsoleCard({
           value={data.position.toFixed(1)}
           hint="lower is better"
           delta={data.deltas.position}
+          lowerIsBetter
         />
       </div>
 

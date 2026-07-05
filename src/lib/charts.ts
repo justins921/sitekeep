@@ -7,7 +7,7 @@
 export const BAND = {
   good: "#6cad45", // 90–100
   mid: "#e87c2e", // 50–89
-  bad: "#cb52cc", // 0–49
+  bad: "#e5484d", // 0–49 — red on the green/amber/red scale
   none: "#b8b8b8",
 } as const;
 
@@ -111,8 +111,8 @@ export const RISK_META: Record<RiskLevel, { label: string; color: string }> = {
   minimal: { label: "Minimal", color: "#6cad45" },
   low: { label: "Low", color: "#8bbf3f" },
   medium: { label: "Medium", color: "#e87c2e" },
-  high: { label: "High", color: "#e0592e" },
-  critical: { label: "Critical", color: "#cb52cc" },
+  high: { label: "High", color: "#e5484d" },
+  critical: { label: "Critical", color: "#c02026" },
 };
 
 export function riskIndex(level: RiskLevel): number {

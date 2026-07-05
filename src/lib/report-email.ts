@@ -19,7 +19,7 @@ const LINE = "#e5e5e5";
 const RATING_HEX: Record<string, string> = {
   good: "#6cad45",
   ni: "#e87c2e",
-  poor: "#cb52cc",
+  poor: "#e5484d",
   none: INK,
 };
 
@@ -81,7 +81,7 @@ function security(d: SecurityData): string {
   return (
     row([
       card("Risk level", risk.label, "", risk.color),
-      card("HTTPS enforced", d.https_enforced ? "Yes" : "No", "", d.https_enforced ? "#6cad45" : "#cb52cc"),
+      card("HTTPS enforced", d.https_enforced ? "Yes" : "No", "", d.https_enforced ? "#6cad45" : "#e5484d"),
       card("SSL expires in", d.ssl_days_to_expiry?.toString() ?? "—", d.ssl_days_to_expiry !== null ? "days" : "", INK),
     ]) +
     `<div style="font:500 12px Arial,sans-serif;color:${MUTED};padding:10px 6px 0;">Security headers present: ${present}/5</div>` +
@@ -174,7 +174,7 @@ function searchConsole(d: SearchConsoleData, accent: string): string {
 
 function uptime(d: UptimeData): string {
   const statusText = { up: "Operational", down: "Down", unknown: "No data yet" }[d.status];
-  const statusColor = { up: "#6cad45", down: "#cb52cc", unknown: INK }[d.status];
+  const statusColor = { up: "#6cad45", down: "#e5484d", unknown: INK }[d.status];
   const incident = d.last_incident
     ? `<div style="font:500 12px Arial,sans-serif;color:${MUTED};padding:10px 6px 0;">Last incident: ${d.last_incident.type === "downtime" ? "Downtime" : "SSL expiring"} on ${new Date(d.last_incident.started_at).toLocaleDateString()}${d.last_incident.resolved_at ? " (resolved)" : " (ongoing)"}.</div>`
     : "";
@@ -227,6 +227,9 @@ export type ReportEmailInput = {
   }>;
   trends: TrendSeries;
   periodLabel: string;
+  /** White-label footer: agency contact + a link to the public request form. */
+  contactEmail?: string | null;
+  publicUrl?: string | null;
 };
 
 /** Static inline-SVG trend charts (email-safe; no scripts). */
@@ -339,8 +342,10 @@ export function renderReportEmail(input: ReportEmailInput): {
         ${annotationsSection(input.annotations)}
         ${activitySection(input.activity)}
         <tr><td style="padding:24px;">
-          <div style="border-top:1px solid ${LINE};padding-top:16px;text-align:center;font:500 12px Arial,sans-serif;color:${BODY};">
-            Maintained by ${input.agency.name}
+          <div style="border-top:1px solid ${LINE};padding-top:16px;text-align:center;">
+            <div style="font:600 13px Arial,sans-serif;color:${INK};">Maintained by ${input.agency.name}</div>
+            ${input.contactEmail ? `<div style="font:400 12px Arial,sans-serif;color:${MUTED};margin-top:4px;"><a href="mailto:${input.contactEmail}" style="color:${MUTED};text-decoration:none;">${input.contactEmail}</a></div>` : ""}
+            ${input.publicUrl ? `<div style="margin-top:8px;"><a href="${input.publicUrl}#request" style="font:600 12px Arial,sans-serif;color:${accent};text-decoration:none;">Report an issue →</a></div>` : ""}
           </div>
         </td></tr>
       </table>

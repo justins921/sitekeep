@@ -1,12 +1,13 @@
 import { cn } from "@/lib/utils";
 
-type Tone = "brand" | "green" | "orange" | "magenta" | "neutral";
+type Tone = "brand" | "green" | "orange" | "magenta" | "red" | "neutral";
 
 const tones: Record<Tone, string> = {
   brand: "bg-brand-50 text-brand border-brand-100",
   green: "bg-fill-green text-accent-green border-green-100",
   orange: "bg-orange-50 text-accent-orange border-orange-100",
   magenta: "bg-fill-pink text-accent-magenta border-pink-100",
+  red: "bg-fill-red text-accent-red border-[color:#f4cccd]",
   neutral: "bg-canvas-alt text-muted border-line",
 };
 
