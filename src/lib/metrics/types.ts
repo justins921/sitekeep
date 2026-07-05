@@ -136,12 +136,36 @@ export type SearchConsoleData = {
   daily_prev: GscDayPoint[]; // preceding window, per day
 };
 
+// ---- Accessibility (WCAG) — parsed from the same Lighthouse response ---------
+
+export type A11ySeverity = "serious" | "moderate" | "minor";
+
+export type A11yAudit = {
+  id: string;
+  title: string;
+  description: string; // plain-English "why it matters / how to fix"
+  group: string; // human group: Contrast, Names & labels, ARIA, …
+  wcag: string | null; // mapped WCAG success criterion where known
+  severity: A11ySeverity;
+  affected: number; // count of affected elements (failing audits)
+};
+
+export type AccessibilityData = {
+  score: number | null; // Lighthouse accessibility score, 0–100
+  strategy: "mobile" | "desktop";
+  passed_count: number;
+  failed_count: number;
+  failed: A11yAudit[];
+  passed: A11yAudit[]; // title + group only (collapsible in the UI)
+};
+
 export type ServiceDataMap = {
   page_speed: PageSpeedData;
   traffic: TrafficData;
   security: SecurityData;
   uptime: UptimeData;
   search_console: SearchConsoleData;
+  accessibility: AccessibilityData;
 };
 
 /** A latest snapshot as read back for rendering. */

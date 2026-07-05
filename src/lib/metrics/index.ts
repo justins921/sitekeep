@@ -5,6 +5,7 @@ import { runPageSpeed } from "./pagespeed";
 import { runSecurity } from "./security";
 import { runTraffic } from "./traffic";
 import { runSearchConsole } from "./search-console";
+import { runAccessibility } from "./accessibility";
 
 export * from "./types";
 
@@ -23,6 +24,7 @@ const PROVIDERS: Record<
   security: (url) => runSecurity(url),
   uptime: async () => ({ ok: false, error: "uptime is handled by the uptime monitor" }),
   search_console: (url, opts) => runSearchConsole(url, opts.gscSiteUrl),
+  accessibility: (url) => runAccessibility(url),
 };
 
 export function runService(

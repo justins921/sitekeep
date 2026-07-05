@@ -8,6 +8,7 @@ export const SERVICE_TYPES = [
   "security",
   "uptime",
   "search_console",
+  "accessibility",
 ] as const;
 export type ServiceType = (typeof SERVICE_TYPES)[number];
 
@@ -39,5 +40,10 @@ export const SERVICE_META: Record<
     label: "Search / SEO",
     blurb: "Google Search clicks, impressions, and ranking positions.",
     tint: "violet",
+  },
+  accessibility: {
+    label: "Accessibility",
+    blurb: "Automated WCAG 2.1 AA scan — flags failing checks with fixes.",
+    tint: "green",
   },
 };

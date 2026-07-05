@@ -21,6 +21,9 @@ import {
   DELTA_TONE_CLASS,
 } from "./format";
 import type {
+  A11yAudit,
+  A11ySeverity,
+  AccessibilityData,
   CoreWebVitals,
   GscDelta,
   PageSpeedData,
@@ -669,6 +672,138 @@ export function SearchConsoleCard({
   );
 }
 
+// --------------------------------------------------------- Accessibility
+
+const SEV_META: Record<A11ySeverity, { label: string; dot: string; text: string }> = {
+  serious: { label: "Serious", dot: "bg-accent-red", text: "text-accent-red" },
+  moderate: { label: "Moderate", dot: "bg-accent-orange", text: "text-accent-orange" },
+  minor: { label: "Minor", dot: "bg-faint", text: "text-muted" },
+};
+
+/** Legally-safe framing shown on every surface that renders the scan. */
+const A11Y_DISCLAIMER =
+  "Automated testing covers a portion of WCAG success criteria; full ADA / WCAG conformance requires manual expert review.";
+
+function A11yFailRow({ a }: { a: A11yAudit }) {
+  const sev = SEV_META[a.severity];
+  return (
+    <li className="rounded-xl border border-line p-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className={"inline-flex items-center gap-1.5 text-xs font-semibold " + sev.text}>
+          <span className={"inline-block h-2 w-2 rounded-full " + sev.dot} />
+          {sev.label}
+        </span>
+        <span className="text-sm font-semibold text-ink">{a.title}</span>
+        {a.affected > 0 && (
+          <span className="rounded-full bg-canvas-alt px-2 py-0.5 text-[11px] font-medium text-muted">
+            {a.affected} element{a.affected === 1 ? "" : "s"}
+          </span>
+        )}
+      </div>
+      {a.description && <p className="mt-1.5 text-sm text-body">{a.description}</p>}
+      <p className="mt-1.5 text-[11px] font-medium uppercase tracking-wide text-faint">
+        {a.wcag ?? a.group}
+      </p>
+    </li>
+  );
+}
+
+export function AccessibilityCard({
+  data,
+  capturedAt,
+  accentColor,
+}: {
+  data: AccessibilityData;
+  capturedAt?: string;
+  accentColor?: string;
+}) {
+  const [showPassed, setShowPassed] = useState(false);
+
+  return (
+    <Card className="p-6">
+      <CardHeader
+        title="Accessibility"
+        accentColor={accentColor}
+        updated={capturedAt}
+        badge={<Badge tone="green">WCAG 2.1 AA</Badge>}
+      />
+      <p className="-mt-3 mb-5 text-xs text-muted">Automated accessibility scan</p>
+
+      <div className="flex flex-col items-center gap-5 sm:flex-row sm:items-center sm:gap-8">
+        {data.score === null ? (
+          <div className="flex h-[104px] w-[104px] flex-col items-center justify-center rounded-full border border-dashed border-line text-center">
+            <span className="text-lg font-bold text-faint">—</span>
+            <span className="mt-0.5 text-[10px] text-faint">awaiting</span>
+          </div>
+        ) : (
+          <Gauge score={data.score} label="Score" />
+        )}
+        <div className="grid flex-1 grid-cols-2 gap-3">
+          <div className="rounded-xl border border-line p-4">
+            <p className="text-xs font-medium text-muted">Checks passed</p>
+            <p className="mt-1 text-2xl font-bold text-accent-green">{data.passed_count}</p>
+          </div>
+          <div className="rounded-xl border border-line p-4">
+            <p className="text-xs font-medium text-muted">Checks failing</p>
+            <p
+              className={
+                "mt-1 text-2xl font-bold " +
+                (data.failed_count === 0 ? "text-accent-green" : "text-accent-red")
+              }
+            >
+              {data.failed_count}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-6">
+        {data.failed.length === 0 ? (
+          <p className="rounded-xl bg-fill-green px-4 py-3 text-sm font-medium text-accent-green">
+            No automated accessibility failures detected.
+          </p>
+        ) : (
+          <>
+            <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted">
+              Failing checks ({data.failed.length})
+            </p>
+            <ul className="grid gap-2">
+              {data.failed.map((a) => (
+                <A11yFailRow key={a.id} a={a} />
+              ))}
+            </ul>
+          </>
+        )}
+      </div>
+
+      {data.passed.length > 0 && (
+        <div className="mt-4">
+          <button
+            type="button"
+            onClick={() => setShowPassed((v) => !v)}
+            className="text-sm font-medium text-brand hover:text-brand-hover"
+          >
+            {showPassed ? "Hide" : "Show"} {data.passed.length} passing check
+            {data.passed.length === 1 ? "" : "s"}
+          </button>
+          {showPassed && (
+            <ul className="mt-3 grid gap-2 sm:grid-cols-2">
+              {data.passed.map((a) => (
+                <li key={a.id} className="flex items-center gap-2 text-sm">
+                  <span className="text-accent-green">✓</span>
+                  <span className="text-body">{a.title}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+
+      <p className="mt-5 border-t border-line pt-4 text-xs text-muted">{A11Y_DISCLAIMER}</p>
+    </Card>
+  );
+}
+
 // -------------------------------------------------------- dispatcher
 
 function EmptyCard({ title, accentColor }: { title: string; accentColor?: string }) {
@@ -706,6 +841,9 @@ export function ServiceCard({
   }
   if (type === "search_console") {
     return <SearchConsoleCard data={data as SearchConsoleData} capturedAt={capturedAt} accentColor={accentColor} />;
+  }
+  if (type === "accessibility") {
+    return <AccessibilityCard data={data as AccessibilityData} capturedAt={capturedAt} accentColor={accentColor} />;
   }
   return <SecurityCard data={data as SecurityData} capturedAt={capturedAt} accentColor={accentColor} />;
 }

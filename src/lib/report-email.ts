@@ -1,7 +1,14 @@
 import "server-only";
 import type { ServiceType } from "@/lib/services";
 import { SERVICE_META } from "@/lib/services";
-import type { SearchConsoleData, SecurityData, TrafficData, UptimeData } from "@/lib/metrics/types";
+import type {
+  AccessibilityData,
+  A11ySeverity,
+  SearchConsoleData,
+  SecurityData,
+  TrafficData,
+  UptimeData,
+} from "@/lib/metrics/types";
 import { cls, ms, rate, secs } from "@/components/metrics/format";
 import { normalizeHex, readableText, safeAccent } from "@/lib/color";
 import { sparklineSvg } from "@/lib/sparkline";
@@ -172,6 +179,55 @@ function searchConsole(d: SearchConsoleData, accent: string): string {
   return tiles + chartBlock + queriesBlock;
 }
 
+const A11Y_SEV_HEX: Record<A11ySeverity, string> = {
+  serious: "#e5484d",
+  moderate: "#e87c2e",
+  minor: "#757575",
+};
+const A11Y_SEV_LABEL: Record<A11ySeverity, string> = {
+  serious: "Serious",
+  moderate: "Moderate",
+  minor: "Minor",
+};
+const A11Y_DISCLAIMER =
+  "Automated testing covers a portion of WCAG success criteria; full ADA / WCAG conformance requires manual expert review.";
+
+function accessibility(d: AccessibilityData): string {
+  const tiles = row([
+    card("Score", d.score === null ? "—" : d.score.toString(), "", RATING_HEX[d.score === null ? "none" : d.score >= 90 ? "good" : d.score >= 50 ? "ni" : "poor"]),
+    card("Checks passed", d.passed_count.toString(), "", "#6cad45"),
+    card("Checks failing", d.failed_count.toString(), "", d.failed_count === 0 ? "#6cad45" : "#e5484d"),
+  ]);
+
+  const failRows = d.failed
+    .slice(0, 12)
+    .map((a) => {
+      const sevColor = A11Y_SEV_HEX[a.severity];
+      const affected = a.affected > 0 ? ` · ${a.affected} element${a.affected === 1 ? "" : "s"}` : "";
+      return `<tr><td style="padding:8px 0;border-bottom:1px solid ${LINE};">
+        <div style="font:600 13px Arial,sans-serif;color:${INK};">
+          <span style="color:${sevColor};">●</span> ${escapeHtml(a.title)}
+          <span style="font:500 11px Arial,sans-serif;color:${MUTED};">(${A11Y_SEV_LABEL[a.severity]}${affected})</span>
+        </div>
+        ${a.description ? `<div style="font:400 12px Arial,sans-serif;color:${BODY};margin-top:2px;">${escapeHtml(a.description)}</div>` : ""}
+        <div style="font:600 10px Arial,sans-serif;color:${MUTED};margin-top:2px;text-transform:uppercase;letter-spacing:.4px;">${escapeHtml(a.wcag ?? a.group)}</div>
+      </td></tr>`;
+    })
+    .join("");
+
+  const failBlock =
+    d.failed.length === 0
+      ? `<div style="border:1px solid ${LINE};border-radius:14px;padding:12px 16px;margin-top:12px;font:500 13px Arial,sans-serif;color:#6cad45;">No automated accessibility failures detected.</div>`
+      : `<div style="padding:12px 6px 0;">
+          <div style="font:600 11px Arial,sans-serif;color:${MUTED};text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px;">Failing checks (${d.failed.length})</div>
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0">${failRows}</table>
+        </div>`;
+
+  const disclaimer = `<div style="font:400 11px Arial,sans-serif;color:${MUTED};padding:12px 6px 0;">${A11Y_DISCLAIMER}</div>`;
+
+  return tiles + failBlock + disclaimer;
+}
+
 function uptime(d: UptimeData): string {
   const statusText = { up: "Operational", down: "Down", unknown: "No data yet" }[d.status];
   const statusColor = { up: "#6cad45", down: "#e5484d", unknown: INK }[d.status];
@@ -197,13 +253,20 @@ function serviceSection(type: ServiceType, data: unknown, accent: string): strin
   else if (type === "security") body = security(data as SecurityData);
   else if (type === "uptime") body = uptime(data as UptimeData);
   else if (type === "search_console") body = searchConsole(data as SearchConsoleData, accent);
+  else if (type === "accessibility") body = accessibility(data as AccessibilityData);
   else body = traffic(data as TrafficData, accent);
+
+  const subtitle =
+    type === "accessibility"
+      ? `<div style="font:500 11px Arial,sans-serif;color:${MUTED};margin-top:2px;">Automated accessibility scan — WCAG 2.1 AA</div>`
+      : "";
 
   return `
     <tr><td style="padding:20px 24px 0;">
       <div style="font:700 16px Arial,sans-serif;color:${INK};">
         ${meta.label}${isDemo ? ` <span style="font:500 11px Arial,sans-serif;color:#e87c2e;background:#fdf0f6;border-radius:99px;padding:2px 8px;">Demo data</span>` : ""}
       </div>
+      ${subtitle}
       <div style="margin-top:10px;">${body}</div>
     </td></tr>`;
 }

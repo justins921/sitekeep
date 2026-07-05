@@ -140,7 +140,10 @@ export default async function PublicDashboardPage({
                 <div
                   key={type}
                   className={
-                    type === "page_speed" || type === "traffic" || type === "search_console"
+                    type === "page_speed" ||
+                    type === "traffic" ||
+                    type === "search_console" ||
+                    type === "accessibility"
                       ? "lg:col-span-2"
                       : ""
                   }
