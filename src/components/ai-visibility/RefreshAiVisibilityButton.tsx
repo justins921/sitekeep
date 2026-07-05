@@ -5,11 +5,11 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui";
 
 /**
- * POC refresh: the Clicks report is fetched server-side with `no-store` on every
- * render, so re-running the server component (router.refresh) re-fetches from
- * Clicks. No DB write, no cron.
+ * Manual refresh: AI-visibility is fetched server-side on each render, so
+ * re-running the server component (router.refresh) re-fetches from the source.
+ * No cron here — the standalone provider's cadence is its own cron (Phase C).
  */
-export function RefreshClicksButton() {
+export function RefreshAiVisibilityButton({ label = "Refresh" }: { label?: string }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   return (
@@ -19,7 +19,7 @@ export function RefreshClicksButton() {
       disabled={pending}
       onClick={() => startTransition(() => router.refresh())}
     >
-      {pending ? "Refreshing…" : "Refresh from Clicks"}
+      {pending ? "Refreshing…" : label}
     </Button>
   );
 }

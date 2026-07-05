@@ -1,7 +1,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// Clicks.so AI-visibility POC — THROWAWAY plumbing (one pilot client, my cookie).
-// Everything Clicks lives under src/lib/clicks + src/components/clicks so the whole
-// thing is easy to delete or promote later. No cron, no multi-tenant auth.
+// Clicks.so provider — raw API shapes only. The normalized/rendered shape is the
+// shared AiVisibility in src/lib/ai-visibility/types.ts (Clicks maps into it via
+// normalize.ts), so the card stays source-agnostic.
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Raw shape of GET /projects/{id}/ai-visibility-report (only the fields we read). */
@@ -25,40 +25,25 @@ export type ClicksRawReport = {
   stale: boolean;
 };
 
-// ---- Normalized shape SiteKeep renders (source-agnostic-ish, but POC-scoped) ----
-
-export type ClicksModelCitation = {
-  key: string; // chatgpt | perplexity | gemini | ai_overview | ai_mode
-  name: string; // display name
-  cited: boolean;
-  statusLabel: string; // "Not cited yet" | "Cited" | …
+/** Raw shape of GET /projects/{id}/all-favorite-competitiors (sibling endpoint). */
+export type ClicksRawCompetitors = {
+  competitors?: Array<{
+    name?: string;
+    domain?: string | null;
+    visibility_score?: string | number | null;
+    cited?: boolean | null;
+  }>;
 };
 
-export type ClicksKeywordTheme = { label: string; keywords: string[] };
-
-export type ClicksRecommendation = {
-  title: string;
-  detail: string;
-  impact: "high" | "medium" | "low" | "other";
+/** Raw shape of GET /projects/{id}/ai-prompt-results (sibling endpoint). */
+export type ClicksRawPromptResults = {
+  prompts?: Array<{
+    prompt?: string;
+    text?: string;
+    engine?: string | null;
+    model?: string | null;
+    mentioned?: boolean | null;
+    cited?: boolean | null;
+    snippet?: string | null;
+  }>;
 };
-
-export type ClicksAiVisibility = {
-  scoreLabel: "poor" | "good" | "great" | "unknown";
-  scorePct: number | null; // gauge value (Clicks maps poor/good/great → 33/66/100)
-  explanation: string;
-  isNewSite: boolean;
-  models: ClicksModelCitation[];
-  citedCount: number;
-  whatsWorking: Array<{ title: string; detail: string }>;
-  holdingBack: Array<{ title: string; detail: string }>;
-  keywordThemes: ClicksKeywordTheme[];
-  recommendations: ClicksRecommendation[];
-  lastRefreshedAt: string | null;
-  stale: boolean;
-  processing: boolean; // status !== "ready"
-};
-
-/** Discriminated result — never throws to the caller; UI branches on `reason`. */
-export type ClicksResult =
-  | { ok: true; data: ClicksAiVisibility }
-  | { ok: false; reason: "expired" | "missing" | "not_mapped" | "error"; message: string };

@@ -14,11 +14,10 @@ import { getViewContext } from "@/lib/view-context";
 import { RefreshButton } from "./RefreshButton";
 import { getSubscription, isEntitled } from "@/lib/billing";
 import { startClientCheckoutAction, confirmActivateAction } from "../actions";
-// --- Clicks.so AI-visibility POC (throwaway; isolated under src/*/clicks) ---
-import { clicksProjectFor } from "@/lib/clicks/config";
-import { getClicksAiVisibility } from "@/lib/clicks/client";
-import { ClicksAiVisibilityCard } from "@/components/clicks/ClicksAiVisibilityCard";
-import { RefreshClicksButton } from "@/components/clicks/RefreshClicksButton";
+// --- AI Visibility (flag-gated, multi-source) ---
+import { getAiVisibility } from "@/lib/ai-visibility";
+import { AiVisibilityCard } from "@/components/ai-visibility/AiVisibilityCard";
+import { RefreshAiVisibilityButton } from "@/components/ai-visibility/RefreshAiVisibilityButton";
 
 // PageSpeed Insights can take 10–20s; give the refresh Server Action (which
 // runs in this route's function) room beyond the default timeout.
@@ -53,8 +52,10 @@ export default async function ClientDashboardTab({
   const annotations = await getAnnotations(supabase, id);
   const trendKeys = TREND_KEYS.filter((k) => services[k]);
 
-  // Clicks.so AI-visibility POC — only fetched for the mapped pilot client.
-  const clicks = clicksProjectFor(id) != null ? await getClicksAiVisibility(id) : null;
+  // AI Visibility — flag-gated (getFeature). Returns reason 'disabled' when the
+  // agency's flag is off, in which case we render nothing.
+  const aiv = await getAiVisibility(client.agency_id, id);
+  const showAiv = aiv.ok || aiv.reason !== "disabled";
 
   // Paused-client activation prompts.
   const showConfirm = confirm === "1" && !client.is_active && entitled;
@@ -149,17 +150,17 @@ export default async function ClientDashboardTab({
         )}
       </div>
 
-      {/* Clicks.so AI-visibility POC — pilot client only (throwaway integration) */}
-      {clicks && (
+      {/* AI Visibility — flag-gated, source chosen by the flag variant */}
+      {showAiv && (
         <div className="mt-12">
           <h2 className="text-xl font-bold tracking-tight">AI Visibility</h2>
           <p className="mt-1 text-sm text-muted">
-            How this site shows up across AI search engines — sourced from Clicks.so (pilot).
+            How this site shows up across AI search engines.
           </p>
           <div className="mt-5">
-            <ClicksAiVisibilityCard
-              result={clicks}
-              refreshButton={readOnly ? undefined : <RefreshClicksButton />}
+            <AiVisibilityCard
+              result={aiv}
+              refreshButton={readOnly ? undefined : <RefreshAiVisibilityButton />}
             />
           </div>
         </div>

@@ -1,37 +1,40 @@
-// Pure raw→normalized mapping for the Clicks AI-visibility report. Import-light
-// (type-only imports) so it can be unit-tested with node --test against the saved
-// sample, no bundler or network.
+// Pure raw→unified mapping for the Clicks AI-visibility report. Outputs the
+// source-agnostic AiVisibility shape (not a Clicks-specific one), so the unified
+// card renders Clicks with zero source knowledge. Import-light (type-only) so it
+// unit-tests with node --test against the saved sample.
 import type {
-  ClicksAiVisibility,
-  ClicksModelCitation,
-  ClicksRawReport,
-  ClicksRecommendation,
-} from "./types";
+  AiCompetitor,
+  AiEngineCitation,
+  AiPromptResult,
+  AiRecommendation,
+  AiVisibility,
+} from "@/lib/ai-visibility/types";
+import type { ClicksRawReport } from "./types";
 
 // Clicks' own bundle maps the categorical score onto the gauge as {poor:33, good:66, great:100}.
 const SCORE_PCT: Record<string, number> = { poor: 33, good: 66, great: 100 };
 
-const MODEL_NAMES: Record<string, string> = {
+const ENGINE_NAMES: Record<string, string> = {
   chatgpt: "ChatGPT",
   perplexity: "Perplexity",
   gemini: "Gemini",
   ai_overview: "AI Overview",
   ai_mode: "AI Mode",
 };
-const MODEL_ORDER = ["chatgpt", "perplexity", "gemini", "ai_overview", "ai_mode"];
+const ENGINE_ORDER = ["chatgpt", "perplexity", "gemini", "ai_overview", "ai_mode"];
 
-/** A Clicks per-model status counts as "cited" unless it's a not-cited / none state. */
+/** A Clicks per-engine status counts as "cited" unless it's a not-cited / none state. */
 export function isCited(status: string): boolean {
   const s = status.toLowerCase();
   return !(s.includes("not_cited") || s === "none" || s === "no" || s === "not_found" || s === "");
 }
 
-function humanizeStatus(status: string): string {
+function humanize(status: string): string {
   const s = status.replace(/_/g, " ").trim();
   return s ? s.charAt(0).toUpperCase() + s.slice(1) : "Unknown";
 }
 
-function mapImpact(impact: string): ClicksRecommendation["impact"] {
+function mapImpact(impact: string): AiRecommendation["impact"] {
   const s = (impact || "").toLowerCase();
   if (s.startsWith("high")) return "high";
   if (s.startsWith("med")) return "medium";
@@ -39,18 +42,38 @@ function mapImpact(impact: string): ClicksRecommendation["impact"] {
   return "other";
 }
 
-export function normalizeClicks(raw: ClicksRawReport): ClicksAiVisibility {
+/** Optional Clicks sibling payloads (competitors + per-prompt results). */
+export type ClicksExtras = {
+  competitors?: Array<{
+    name?: string;
+    domain?: string | null;
+    score?: number | null;
+    cited?: boolean | null;
+  }>;
+  prompts?: Array<{
+    prompt?: string;
+    engine?: string | null;
+    mentioned?: boolean;
+    snippet?: string | null;
+  }>;
+};
+
+export function normalizeClicks(
+  raw: ClicksRawReport,
+  extras: ClicksExtras = {},
+  demo = false,
+): AiVisibility {
   const breakdown = raw.llm_breakdown ?? {};
-  const keys = MODEL_ORDER.filter((k) => k in breakdown).concat(
-    Object.keys(breakdown).filter((k) => !MODEL_ORDER.includes(k)),
+  const keys = ENGINE_ORDER.filter((k) => k in breakdown).concat(
+    Object.keys(breakdown).filter((k) => !ENGINE_ORDER.includes(k)),
   );
-  const models: ClicksModelCitation[] = keys.map((key) => {
+  const engines: AiEngineCitation[] = keys.map((key) => {
     const status = breakdown[key] ?? "";
     return {
       key,
-      name: MODEL_NAMES[key] ?? humanizeStatus(key),
+      name: ENGINE_NAMES[key] ?? humanize(key),
       cited: isCited(status),
-      statusLabel: humanizeStatus(status),
+      statusLabel: humanize(status),
     };
   });
 
@@ -58,13 +81,27 @@ export function normalizeClicks(raw: ClicksRawReport): ClicksAiVisibility {
     ? (raw.visibility_score as "poor" | "good" | "great")
     : "unknown";
 
+  const competitors: AiCompetitor[] = (extras.competitors ?? []).map((c) => ({
+    name: c.name ?? "—",
+    domain: c.domain ?? null,
+    score: typeof c.score === "number" ? c.score : null,
+    cited: typeof c.cited === "boolean" ? c.cited : null,
+  }));
+
+  const prompts: AiPromptResult[] = (extras.prompts ?? []).map((p) => ({
+    prompt: p.prompt ?? "",
+    engine: p.engine ?? null,
+    mentioned: Boolean(p.mentioned),
+    snippet: p.snippet ?? null,
+  }));
+
   return {
     scoreLabel: label,
     scorePct: SCORE_PCT[raw.visibility_score] ?? null,
     explanation: raw.score_explanation ?? "",
     isNewSite: Boolean(raw.is_new_site),
-    models,
-    citedCount: models.filter((m) => m.cited).length,
+    engines,
+    citedCount: engines.filter((m) => m.cited).length,
     whatsWorking: (raw.whats_working ?? []).map((w) => ({ title: w.title, detail: w.detail })),
     holdingBack: (raw.holding_back ?? []).map((h) => ({ title: h.title, detail: h.detail })),
     keywordThemes: (raw.keyword_footprint ?? []).map((k) => ({
@@ -76,8 +113,11 @@ export function normalizeClicks(raw: ClicksRawReport): ClicksAiVisibility {
       detail: r.description,
       impact: mapImpact(r.impact),
     })),
+    competitors,
+    prompts,
     lastRefreshedAt: raw.last_refreshed_at ?? null,
     stale: Boolean(raw.stale),
     processing: (raw.status ?? "").toLowerCase() !== "ready",
+    source: { label: "Clicks", variant: "clicks", demo },
   };
 }
