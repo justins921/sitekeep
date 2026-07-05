@@ -7,13 +7,14 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { agency, userEmail, isSuperAdmin, viewingAs } = await getViewContext();
+  const { agency, userEmail, role, isSuperAdmin, viewingAs } = await getViewContext();
 
   return (
     <div className="flex min-h-screen bg-canvas">
       <Sidebar
         agencyName={agency.name}
         userEmail={userEmail}
+        role={role}
         isSuperAdmin={isSuperAdmin}
         viewingAs={viewingAs}
       />

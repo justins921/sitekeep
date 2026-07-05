@@ -12,12 +12,19 @@ function siteUrl() {
   return process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 }
 
+/** Guard a post-auth redirect target: must be an in-app path, never off-site. */
+function safeNext(next: string | null | undefined): string {
+  if (next && next.startsWith("/") && !next.startsWith("//")) return next;
+  return "/dashboard";
+}
+
 export async function login(
   _prev: AuthState,
   formData: FormData,
 ): Promise<AuthState> {
   const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");
+  const next = safeNext(String(formData.get("next") ?? ""));
 
   if (!email || !password) {
     return { error: "Email and password are required." };
@@ -37,7 +44,7 @@ export async function login(
     return { error: error.message };
   }
 
-  redirect("/dashboard");
+  redirect(next);
 }
 
 export async function signup(
@@ -47,6 +54,7 @@ export async function signup(
   const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");
   const agencyName = String(formData.get("agency_name") ?? "").trim();
+  const next = safeNext(String(formData.get("next") ?? ""));
 
   if (!email || !password) {
     return { error: "Email and password are required." };
@@ -55,14 +63,18 @@ export async function signup(
     return { error: "Password must be at least 8 characters." };
   }
 
+  // Carry `next` (e.g. an invite-accept URL) through the confirmation callback.
+  const confirmUrl =
+    next === "/dashboard"
+      ? `${siteUrl()}/auth/confirm`
+      : `${siteUrl()}/auth/confirm?next=${encodeURIComponent(next)}`;
+
   const supabase = await createClient();
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
-      // The confirmation link lands on our callback route, which exchanges the
-      // token for a session and forwards to the dashboard.
-      emailRedirectTo: `${siteUrl()}/auth/confirm`,
+      emailRedirectTo: confirmUrl,
       // Consumed by the auth.users trigger to name the agency on first login.
       data: { agency_name: agencyName || "My Agency" },
     },
@@ -75,7 +87,7 @@ export async function signup(
   // When email confirmation is disabled, Supabase returns an active session and
   // the user is signed in immediately. Otherwise, show the check-your-inbox state.
   if (data.session) {
-    redirect("/dashboard");
+    redirect(next);
   }
 
   return { ok: "check_email", email };

@@ -6,9 +6,9 @@ import { login } from "../actions";
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ confirm?: string; error?: string; reset?: string }>;
+  searchParams: Promise<{ confirm?: string; error?: string; reset?: string; next?: string }>;
 }) {
-  const { confirm, error, reset } = await searchParams;
+  const { confirm, error, reset, next } = await searchParams;
 
   return (
     <Card className="p-8">
@@ -34,12 +34,15 @@ export default async function LoginPage({
       )}
 
       <div className="mt-6">
-        <AuthForm mode="login" action={login} />
+        <AuthForm mode="login" action={login} next={next} />
       </div>
 
       <p className="mt-6 text-center text-sm text-muted">
         New to SiteKeep?{" "}
-        <Link href="/signup" className="font-medium text-brand hover:underline">
+        <Link
+          href={next ? `/signup?next=${encodeURIComponent(next)}` : "/signup"}
+          className="font-medium text-brand hover:underline"
+        >
           Create an account
         </Link>
       </p>

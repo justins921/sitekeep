@@ -47,9 +47,11 @@ function CheckEmail({ email }: { email: string }) {
 export function AuthForm({
   mode,
   action,
+  next,
 }: {
   mode: "login" | "signup";
   action: Action;
+  next?: string;
 }) {
   const [state, formAction, pending] = useActionState<AuthState, FormData>(
     action,
@@ -62,6 +64,7 @@ export function AuthForm({
 
   return (
     <form action={formAction} className="space-y-4">
+      {next && <input type="hidden" name="next" value={next} />}
       {mode === "signup" && (
         <div className="space-y-1.5">
           <label htmlFor="agency_name" className="text-sm font-medium text-ink">

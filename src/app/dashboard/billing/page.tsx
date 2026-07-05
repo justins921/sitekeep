@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { requireAgency } from "@/lib/agency";
 import { createClient } from "@/lib/supabase/server";
 import {
@@ -22,7 +23,9 @@ export default async function BillingPage({
 }: {
   searchParams: Promise<{ checkout?: string }>;
 }) {
-  const { agency } = await requireAgency();
+  const { agency, role } = await requireAgency();
+  // Billing is owner-only; members are sent back to the dashboard.
+  if (role !== "owner") redirect("/dashboard");
   const { checkout } = await searchParams;
   const supabase = await createClient();
 

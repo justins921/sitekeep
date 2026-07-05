@@ -18,6 +18,7 @@ import {
 } from "@/lib/billing";
 import { recordUptimeCheck, writeUptimeSnapshot } from "@/lib/uptime";
 import { detectSignificantSwings } from "@/lib/auto-annotations";
+import { resolveMembership } from "@/lib/agency";
 
 export type ClientFormState = { error: string } | null;
 
@@ -65,13 +66,10 @@ async function requireAgency(
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: agency } = await supabase
-    .from("agencies")
-    .select("id")
-    .eq("owner_id", user.id)
-    .single();
-  if (!agency) redirect("/login");
-  return { agencyId: agency.id as string, email: user.email ?? undefined };
+  // Any member (owner or member) can manage clients — resolve via membership.
+  const membership = await resolveMembership(supabase, user.id);
+  if (!membership) redirect("/join");
+  return { agencyId: membership.agency.id, email: user.email ?? undefined };
 }
 
 const randomSuffix = () => Math.random().toString(36).slice(2, 7);

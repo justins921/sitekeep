@@ -2,7 +2,7 @@ import "server-only";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import type { Agency } from "@/lib/agency";
+import { resolveMembership, type Agency, type AgencyRole } from "@/lib/agency";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 // The "view as agency" support flow (Phase 14): a super-admin can set a cookie
@@ -26,6 +26,8 @@ export type ViewContext = {
   isSuperAdmin: boolean;
   /** Effective agency: the impersonated one when viewing-as, else the user's own. */
   agency: Agency;
+  /** The user's role in their OWN agency ('owner'|'member'); 'owner' while viewing-as. */
+  role: AgencyRole;
   /** Impersonated agency name when viewing-as, else null. */
   viewingAs: string | null;
 };
@@ -46,6 +48,7 @@ export async function getViewContext(): Promise<ViewContext> {
 
   let agency: Agency | null = null;
   let viewingAs: string | null = null;
+  let role: AgencyRole = "owner";
 
   if (superAdmin) {
     const store = await cookies();
@@ -59,18 +62,16 @@ export async function getViewContext(): Promise<ViewContext> {
       if (data) {
         agency = data as Agency;
         viewingAs = (data as Agency).name;
+        role = "owner"; // impersonation is read-only regardless of role
       }
     }
   }
 
   if (!agency) {
-    const { data } = await supabase
-      .from("agencies")
-      .select("*")
-      .eq("owner_id", user.id)
-      .single();
-    if (!data) redirect("/login");
-    agency = data as Agency;
+    const membership = await resolveMembership(supabase, user.id);
+    if (!membership) redirect("/join");
+    agency = membership.agency;
+    role = membership.role;
   }
 
   return {
@@ -79,6 +80,7 @@ export async function getViewContext(): Promise<ViewContext> {
     userEmail: user.email ?? "",
     isSuperAdmin: superAdmin,
     agency,
+    role,
     viewingAs,
   };
 }

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { resolveMembership } from "@/lib/agency";
 import { normalizeHex } from "@/lib/color";
 
 export type BrandingState = { error: string } | { ok: true } | null;
@@ -27,12 +28,9 @@ export async function updateBrandingAction(
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { data: agency } = await supabase
-    .from("agencies")
-    .select("id")
-    .eq("owner_id", user.id)
-    .single();
-  if (!agency) redirect("/login");
+  const membership = await resolveMembership(supabase, user.id);
+  if (!membership) redirect("/join");
+  const agency = membership.agency;
 
   const name = String(formData.get("name") ?? "").trim();
   if (!name) return { error: "Agency name is required." };

@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { resolveMembership } from "@/lib/agency";
 import { getStripe } from "@/lib/stripe";
 import {
   countActiveDashboards,
@@ -17,23 +18,21 @@ function siteUrl() {
   return process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 }
 
-async function requireAgency() {
+/** Billing is OWNER-ONLY. Members are redirected back to the dashboard. */
+async function requireOwnerAgency() {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
-  const { data: agency } = await supabase
-    .from("agencies")
-    .select("id")
-    .eq("owner_id", user.id)
-    .single();
-  if (!agency) redirect("/login");
-  return { supabase, agencyId: agency.id as string, email: user.email ?? undefined };
+  const membership = await resolveMembership(supabase, user.id);
+  if (!membership) redirect("/join");
+  if (membership.role !== "owner") redirect("/dashboard");
+  return { supabase, agencyId: membership.agency.id, email: user.email ?? undefined };
 }
 
 export async function createCheckoutSession(): Promise<BillingActionResult> {
-  const { supabase, agencyId, email } = await requireAgency();
+  const { supabase, agencyId, email } = await requireOwnerAgency();
   const [active, createdAt] = await Promise.all([
     countActiveDashboards(supabase, agencyId),
     getAgencyCreatedAt(supabase, agencyId),
@@ -43,7 +42,7 @@ export async function createCheckoutSession(): Promise<BillingActionResult> {
 }
 
 export async function createPortalSession(): Promise<BillingActionResult> {
-  const { supabase, agencyId } = await requireAgency();
+  const { supabase, agencyId } = await requireOwnerAgency();
   const sub = await getSubscription(supabase, agencyId);
   if (!sub?.stripe_customer_id) {
     return { error: "Subscribe first, then you can manage billing." };

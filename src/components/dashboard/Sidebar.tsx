@@ -5,29 +5,35 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Avatar, Spark } from "@/components/ui";
 
-const baseNav = [
-  { href: "/dashboard", label: "Clients", exact: true, icon: "◧" },
-  { href: "/dashboard/settings", label: "Branding", icon: "◑" },
-  { href: "/dashboard/billing", label: "Billing", icon: "◈" },
-];
+const CLIENTS = { href: "/dashboard", label: "Clients", exact: true, icon: "◧" };
+const BRANDING = { href: "/dashboard/settings", label: "Branding", exact: false, icon: "◑" };
+const TEAM = { href: "/dashboard/team", label: "Team", exact: false, icon: "◍" };
+const BILLING = { href: "/dashboard/billing", label: "Billing", exact: false, icon: "◈" };
 
 export function Sidebar({
   agencyName,
   userEmail,
+  role = "owner",
   isSuperAdmin = false,
   viewingAs = null,
 }: {
   agencyName: string;
   userEmail: string;
+  role?: "owner" | "member";
   isSuperAdmin?: boolean;
   viewingAs?: string | null;
 }) {
   const pathname = usePathname();
 
-  // While impersonating, show only Clients (Branding/Billing are the admin's own
-  // and would mismatch the agency being viewed). The /admin entry is rendered
+  // While impersonating, show only Clients (the rest are the admin's own and
+  // would mismatch the agency being viewed). Otherwise everyone sees Clients /
+  // Branding / Team; Billing is owner-only. The /admin entry is rendered
   // server-side only for super-admins — never a client-side hide.
-  const nav = viewingAs ? baseNav.slice(0, 1) : baseNav;
+  const nav = viewingAs
+    ? [CLIENTS]
+    : role === "owner"
+      ? [CLIENTS, BRANDING, TEAM, BILLING]
+      : [CLIENTS, BRANDING, TEAM];
 
   return (
     <aside className="flex w-64 shrink-0 flex-col border-r border-line bg-white">
