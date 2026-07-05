@@ -114,7 +114,11 @@ export default async function ClientDashboardTab({
             {enabledServices.map((type) => (
               <div
                 key={type}
-                className={type === "page_speed" || type === "traffic" ? "lg:col-span-2" : ""}
+                className={
+                  type === "page_speed" || type === "traffic" || type === "search_console"
+                    ? "lg:col-span-2"
+                    : ""
+                }
               >
                 <ServiceCard
                   type={type}
