@@ -9,6 +9,7 @@ import type { SearchConsoleData, TrafficData } from "@/lib/metrics/types";
 import { ServiceToggles } from "../ServiceToggles";
 import { TrafficSettings } from "../TrafficSettings";
 import { SearchConsoleSettings } from "../SearchConsoleSettings";
+import { AiVisibilitySettings } from "../AiVisibilitySettings";
 import { ReportSettings } from "../ReportSettings";
 import { CopyLinkButton } from "../CopyLinkButton";
 import { DeleteClientButton } from "../DeleteClientButton";
@@ -59,6 +60,19 @@ export default async function ClientSettingsTab({
   const gscConnected = gscData?.connected === true;
   const gscError = gscData && !gscData.connected ? gscData.error ?? null : null;
 
+  // AI Visibility (Clicks) config: this client's project id + the agency's
+  // connection status (mode only — the credential is never read back to the UI).
+  const [{ data: clicksRow }, { data: clicksConn }] = await Promise.all([
+    supabase.from("clients").select("clicks_project_id").eq("id", id).maybeSingle(),
+    supabase
+      .from("agency_clicks_connections")
+      .select("auth_mode")
+      .eq("agency_id", client.agency_id)
+      .maybeSingle(),
+  ]);
+  const clicksProjectId = (clicksRow?.clicks_project_id as number | null) ?? null;
+  const clicksMode = (clicksConn?.auth_mode as "session" | "token" | undefined) ?? null;
+
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
   const publicUrl = `${siteUrl}/d/${client.slug}`;
 
@@ -94,6 +108,14 @@ export default async function ClientSettingsTab({
             />
           </div>
         )}
+        <div className="mt-4">
+          <AiVisibilitySettings
+            clientId={id}
+            initialProjectId={clicksProjectId}
+            connectionMode={clicksMode}
+            connected={Boolean(clicksMode)}
+          />
+        </div>
       </section>
 
       {/* Monthly report */}

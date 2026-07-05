@@ -25,25 +25,18 @@ export type ClicksRawReport = {
   stale: boolean;
 };
 
-/** Raw shape of GET /projects/{id}/all-favorite-competitiors (sibling endpoint). */
+// GET /projects/{id}/all-favorite-competitiors → { favorites: [...] }. Item shape
+// is parsed permissively (empty for the pilot, so exact fields are best-effort).
 export type ClicksRawCompetitors = {
-  competitors?: Array<{
-    name?: string;
-    domain?: string | null;
-    visibility_score?: string | number | null;
-    cited?: boolean | null;
-  }>;
+  favorites?: Array<Record<string, unknown>>;
 };
 
-/** Raw shape of GET /projects/{id}/ai-prompt-results (sibling endpoint). */
+// GET /projects/{id}/ai-prompt-results → { success, date_from, date_to, prompts, engines }.
 export type ClicksRawPromptResults = {
-  prompts?: Array<{
-    prompt?: string;
-    text?: string;
-    engine?: string | null;
-    model?: string | null;
-    mentioned?: boolean | null;
-    cited?: boolean | null;
-    snippet?: string | null;
-  }>;
+  prompts?: Array<Record<string, unknown>>;
+  engines?: Array<Record<string, unknown>>;
 };
+
+/** How an agency authenticates to Clicks. */
+export type ClicksAuthMode = "session" | "token";
+export type ClicksConnection = { authMode: ClicksAuthMode; credential: string };
