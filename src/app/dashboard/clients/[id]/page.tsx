@@ -14,6 +14,11 @@ import { getViewContext } from "@/lib/view-context";
 import { RefreshButton } from "./RefreshButton";
 import { getSubscription, isEntitled } from "@/lib/billing";
 import { startClientCheckoutAction, confirmActivateAction } from "../actions";
+// --- Clicks.so AI-visibility POC (throwaway; isolated under src/*/clicks) ---
+import { clicksProjectFor } from "@/lib/clicks/config";
+import { getClicksAiVisibility } from "@/lib/clicks/client";
+import { ClicksAiVisibilityCard } from "@/components/clicks/ClicksAiVisibilityCard";
+import { RefreshClicksButton } from "@/components/clicks/RefreshClicksButton";
 
 // PageSpeed Insights can take 10–20s; give the refresh Server Action (which
 // runs in this route's function) room beyond the default timeout.
@@ -47,6 +52,9 @@ export default async function ClientDashboardTab({
   const trends = await getDatedTrendSeries(supabase, id);
   const annotations = await getAnnotations(supabase, id);
   const trendKeys = TREND_KEYS.filter((k) => services[k]);
+
+  // Clicks.so AI-visibility POC — only fetched for the mapped pilot client.
+  const clicks = clicksProjectFor(id) != null ? await getClicksAiVisibility(id) : null;
 
   // Paused-client activation prompts.
   const showConfirm = confirm === "1" && !client.is_active && entitled;
@@ -140,6 +148,22 @@ export default async function ClientDashboardTab({
           </div>
         )}
       </div>
+
+      {/* Clicks.so AI-visibility POC — pilot client only (throwaway integration) */}
+      {clicks && (
+        <div className="mt-12">
+          <h2 className="text-xl font-bold tracking-tight">AI Visibility</h2>
+          <p className="mt-1 text-sm text-muted">
+            How this site shows up across AI search engines — sourced from Clicks.so (pilot).
+          </p>
+          <div className="mt-5">
+            <ClicksAiVisibilityCard
+              result={clicks}
+              refreshButton={readOnly ? undefined : <RefreshClicksButton />}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Trends + annotations */}
       {trendKeys.length > 0 && (
