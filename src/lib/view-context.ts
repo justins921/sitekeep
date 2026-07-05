@@ -22,17 +22,22 @@ export function superAdminEmails(): string[] {
 }
 
 /**
- * True when the signed-in user's email is on the SUPER_ADMIN_EMAILS allowlist.
- * This env allowlist is the app-side authority for /admin. The DB `super_admins`
- * table (migration 0010) backs the RLS `is_super_admin()` checks (cross-tenant
- * reads + feature-flag writes); keep the two allowlists in sync.
+ * True when the signed-in user is a super-admin by EITHER source:
+ *   1. the SUPER_ADMIN_EMAILS env allowlist (works even before a DB seed), or
+ *   2. the DB `super_admins` table via the is_super_admin() RPC (migration 0010),
+ *      which also backs the RLS cross-tenant reads + feature-flag writes.
+ * OR-ing the two means /admin works in environments where the env var isn't set
+ * (e.g. production) AND lets an env-only addition through — no sync footgun.
  */
 export async function isSuperAdmin(supabase: SupabaseClient): Promise<boolean> {
   const {
     data: { user },
   } = await supabase.auth.getUser();
   const email = user?.email?.toLowerCase();
-  return Boolean(email && superAdminEmails().includes(email));
+  if (email && superAdminEmails().includes(email)) return true;
+
+  const { data } = await supabase.rpc("is_super_admin");
+  return data === true;
 }
 
 export type ViewContext = {
