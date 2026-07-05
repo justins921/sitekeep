@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 const nav = [
   { href: "/admin", label: "Overview", exact: true },
   { href: "/admin/agencies", label: "Agencies" },
+  { href: "/admin/flags", label: "Feature flags" },
 ];
 
 export function AdminNav() {

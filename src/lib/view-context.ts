@@ -13,10 +13,26 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 export const VIEW_AS_COOKIE = "sk_view_as";
 
-/** True when the signed-in user is on the super-admin allowlist. */
+/** Parsed SUPER_ADMIN_EMAILS allowlist (comma-separated, case-insensitive). */
+export function superAdminEmails(): string[] {
+  return (process.env.SUPER_ADMIN_EMAILS ?? "")
+    .split(",")
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+/**
+ * True when the signed-in user's email is on the SUPER_ADMIN_EMAILS allowlist.
+ * This env allowlist is the app-side authority for /admin. The DB `super_admins`
+ * table (migration 0010) backs the RLS `is_super_admin()` checks (cross-tenant
+ * reads + feature-flag writes); keep the two allowlists in sync.
+ */
 export async function isSuperAdmin(supabase: SupabaseClient): Promise<boolean> {
-  const { data } = await supabase.rpc("is_super_admin");
-  return data === true;
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const email = user?.email?.toLowerCase();
+  return Boolean(email && superAdminEmails().includes(email));
 }
 
 export type ViewContext = {
