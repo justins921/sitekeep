@@ -10,7 +10,7 @@ export default async function DashboardLayout({
   const { agency, userEmail, role, isSuperAdmin, viewingAs } = await getViewContext();
 
   return (
-    <div className="flex min-h-screen bg-canvas">
+    <div className="min-h-screen bg-canvas lg:flex">
       <Sidebar
         agencyName={agency.name}
         userEmail={userEmail}
@@ -18,9 +18,9 @@ export default async function DashboardLayout({
         isSuperAdmin={isSuperAdmin}
         viewingAs={viewingAs}
       />
-      <main className="flex-1 overflow-y-auto">
+      <main className="min-w-0 flex-1">
         {viewingAs && (
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-orange-100 bg-orange-50 px-8 py-3">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-orange-100 bg-orange-50 px-4 py-3 sm:px-8">
             <p className="text-sm text-ink">
               👁 Viewing as <strong>{viewingAs}</strong> — read-only support view.
             </p>
@@ -34,7 +34,7 @@ export default async function DashboardLayout({
             </form>
           </div>
         )}
-        <div className="mx-auto max-w-6xl px-8 py-10">{children}</div>
+        <div className="mx-auto max-w-6xl px-4 py-8 sm:px-8 sm:py-10">{children}</div>
       </main>
     </div>
   );

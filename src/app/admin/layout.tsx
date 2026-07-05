@@ -16,7 +16,7 @@ export default async function AdminLayout({
   return (
     <div className="min-h-screen bg-canvas">
       <header className="border-b border-line bg-white">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-8 py-4">
+        <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-8 sm:py-4">
           <div className="flex items-center gap-6">
             <Link href="/admin" className="inline-flex items-center gap-2 font-bold text-ink">
               <Spark className="text-brand" />
@@ -36,7 +36,7 @@ export default async function AdminLayout({
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl px-8 py-10">{children}</main>
+      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-8 sm:py-10">{children}</main>
     </div>
   );
 }
