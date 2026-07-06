@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Badge, Card } from "@/components/ui";
+import { Badge, Card, StarRating } from "@/components/ui";
 import { Gauge, GaugeLegend } from "@/components/charts/Gauge";
 import { RiskMeter } from "@/components/charts/RiskMeter";
 import { LineChart, ComparisonLegend } from "@/components/charts/LineChart";
@@ -25,6 +25,7 @@ import type {
   A11ySeverity,
   AccessibilityData,
   CoreWebVitals,
+  GoogleBusinessData,
   GscDelta,
   PageSpeedData,
   PageSpeedStrategyData,
@@ -804,6 +805,123 @@ export function AccessibilityCard({
   );
 }
 
+// ------------------------------------------------ Google Business Profile
+
+export function GoogleBusinessCard({
+  data,
+  capturedAt,
+  accentColor,
+}: {
+  data: GoogleBusinessData;
+  capturedAt?: string;
+  accentColor?: string;
+}) {
+  if (!data.connected) {
+    return (
+      <Card className="p-6">
+        <CardHeader title="Google Business Profile" accentColor={accentColor} />
+        <p className="text-sm text-muted">
+          {data.error ??
+            "Not connected. Add this client’s Google Business location in settings to show rating, reviews, and profile completeness."}
+        </p>
+      </Card>
+    );
+  }
+
+  const pctColor =
+    data.completeness_pct >= 80
+      ? "text-accent-green"
+      : data.completeness_pct >= 50
+        ? "text-accent-orange"
+        : "text-accent-red";
+  const barColor =
+    data.completeness_pct >= 80
+      ? "bg-accent-green"
+      : data.completeness_pct >= 50
+        ? "bg-accent-orange"
+        : "bg-accent-red";
+
+  return (
+    <Card className="p-6">
+      <CardHeader
+        title="Google Business Profile"
+        accentColor={accentColor}
+        updated={capturedAt}
+        badge={data.demo ? <Badge tone="orange">Demo data</Badge> : undefined}
+      />
+
+      <div className="grid gap-3 sm:grid-cols-3">
+        <div className="rounded-xl border border-line p-4">
+          <p className="text-xs font-medium text-muted">Rating</p>
+          <div className="mt-1 flex items-center gap-2">
+            <span className="text-2xl font-bold text-ink">
+              {data.rating === null ? "—" : data.rating.toFixed(1)}
+            </span>
+            {data.rating !== null && <StarRating rating={Math.round(data.rating)} />}
+          </div>
+        </div>
+        <div className="rounded-xl border border-line p-4">
+          <p className="text-xs font-medium text-muted">Reviews</p>
+          <p className="mt-1 text-2xl font-bold text-ink">
+            {data.reviews_total === null ? "—" : data.reviews_total.toLocaleString()}
+          </p>
+        </div>
+        <div className="rounded-xl border border-line p-4">
+          <p className="text-xs font-medium text-muted">Profile completeness</p>
+          <p className={"mt-1 text-2xl font-bold " + pctColor}>{data.completeness_pct}%</p>
+        </div>
+      </div>
+
+      {/* Completeness checklist */}
+      {data.checklist.length > 0 && (
+        <div className="mt-5">
+          <div className="mb-3 h-2 overflow-hidden rounded-full bg-canvas-alt">
+            <div className={"h-full rounded-full " + barColor} style={{ width: `${data.completeness_pct}%` }} />
+          </div>
+          <ul className="grid gap-2 sm:grid-cols-2">
+            {data.checklist.map((c) => (
+              <li key={c.key} className="flex items-center gap-2 text-sm">
+                <span className={c.ok ? "text-accent-green" : "text-accent-red"}>{c.ok ? "✓" : "✕"}</span>
+                <span className="text-body">{c.label}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Recent reviews */}
+      {data.reviews.length > 0 && (
+        <div className="mt-6 border-t border-line pt-5">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted">Recent reviews</p>
+          <ul className="grid gap-3">
+            {data.reviews.map((r, i) => (
+              <li key={i} className="rounded-xl border border-line p-4">
+                <div className="flex flex-wrap items-center gap-2">
+                  <StarRating rating={Math.round(r.rating)} />
+                  <span className="text-sm font-semibold text-ink">{r.author}</span>
+                  {r.relative && <span className="text-xs text-muted">· {r.relative}</span>}
+                </div>
+                {r.text && <p className="mt-1.5 line-clamp-3 text-sm text-body">{r.text}</p>}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {data.maps_url && (
+        <a
+          href={data.maps_url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-4 inline-block text-sm font-medium text-brand hover:text-brand-hover"
+        >
+          View on Google Maps →
+        </a>
+      )}
+    </Card>
+  );
+}
+
 // -------------------------------------------------------- dispatcher
 
 function EmptyCard({ title, accentColor }: { title: string; accentColor?: string }) {
@@ -844,6 +962,9 @@ export function ServiceCard({
   }
   if (type === "accessibility") {
     return <AccessibilityCard data={data as AccessibilityData} capturedAt={capturedAt} accentColor={accentColor} />;
+  }
+  if (type === "google_business") {
+    return <GoogleBusinessCard data={data as GoogleBusinessData} capturedAt={capturedAt} accentColor={accentColor} />;
   }
   return <SecurityCard data={data as SecurityData} capturedAt={capturedAt} accentColor={accentColor} />;
 }

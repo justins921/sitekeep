@@ -143,7 +143,8 @@ export default async function PublicDashboardPage({
                     type === "page_speed" ||
                     type === "traffic" ||
                     type === "search_console" ||
-                    type === "accessibility"
+                    type === "accessibility" ||
+                    type === "google_business"
                       ? "lg:col-span-2"
                       : ""
                   }

@@ -9,8 +9,10 @@ import type { SearchConsoleData, TrafficData } from "@/lib/metrics/types";
 import { ServiceToggles } from "../ServiceToggles";
 import { TrafficSettings } from "../TrafficSettings";
 import { SearchConsoleSettings } from "../SearchConsoleSettings";
+import { GoogleBusinessSettings } from "../GoogleBusinessSettings";
 import { AiVisibilitySettings } from "../AiVisibilitySettings";
 import { ReportSettings } from "../ReportSettings";
+import { gbpConfigured } from "@/lib/metrics/google-business";
 import { CopyLinkButton } from "../CopyLinkButton";
 import { DeleteClientButton } from "../DeleteClientButton";
 import { ClientForm } from "../../ClientForm";
@@ -28,7 +30,7 @@ export default async function ClientSettingsTab({
 
   const supabase = await createClient();
   const snapshots = await getLatestSnapshots(id);
-  const [{ data: report }, { data: trafficSvc }, { data: gscSvc }] = await Promise.all([
+  const [{ data: report }, { data: trafficSvc }, { data: gscSvc }, { data: gbpSvc }] = await Promise.all([
     supabase
       .from("reports")
       .select("enabled, send_day, recipient_email, last_sent_at")
@@ -45,6 +47,12 @@ export default async function ClientSettingsTab({
       .select("config")
       .eq("client_id", id)
       .eq("service_type", "search_console")
+      .maybeSingle(),
+    supabase
+      .from("client_services")
+      .select("config")
+      .eq("client_id", id)
+      .eq("service_type", "google_business")
       .maybeSingle(),
   ]);
 
@@ -72,6 +80,9 @@ export default async function ClientSettingsTab({
   ]);
   const clicksProjectId = (clicksRow?.clicks_project_id as number | null) ?? null;
   const clicksMode = (clicksConn?.auth_mode as "session" | "token" | undefined) ?? null;
+
+  const gbpConfig = (gbpSvc?.config as { place_id?: string | null; place_name?: string | null } | null) ?? null;
+  const gbpPlaceName = gbpConfig?.place_name ?? null;
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
   const publicUrl = `${siteUrl}/d/${client.slug}`;
@@ -105,6 +116,16 @@ export default async function ClientSettingsTab({
               serviceAccountEmail={ga4ServiceEmail}
               connected={gscConnected}
               connectionError={gscError}
+            />
+          </div>
+        )}
+        {services.google_business && (
+          <div className="mt-4">
+            <GoogleBusinessSettings
+              clientId={id}
+              initialQuery={gbpPlaceName ?? ""}
+              placeName={gbpPlaceName}
+              keyConfigured={gbpConfigured()}
             />
           </div>
         )}

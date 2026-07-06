@@ -4,6 +4,7 @@ import { SERVICE_META } from "@/lib/services";
 import type {
   AccessibilityData,
   A11ySeverity,
+  GoogleBusinessData,
   SearchConsoleData,
   SecurityData,
   TrafficData,
@@ -228,6 +229,24 @@ function accessibility(d: AccessibilityData): string {
   return tiles + failBlock + disclaimer;
 }
 
+function googleBusiness(d: GoogleBusinessData): string {
+  if (!d.connected) {
+    return `<div style="border:1px solid ${LINE};border-radius:14px;padding:16px;font:400 13px Arial,sans-serif;color:${MUTED};">Google Business Profile not connected.</div>`;
+  }
+  const pctColor = d.completeness_pct >= 80 ? "#6cad45" : d.completeness_pct >= 50 ? "#e87c2e" : "#e5484d";
+  const tiles = row([
+    card("Rating", d.rating === null ? "—" : d.rating.toFixed(1), d.rating === null ? "" : "★", INK),
+    card("Reviews", d.reviews_total === null ? "—" : d.reviews_total.toLocaleString(), "", INK),
+    card("Completeness", d.completeness_pct.toString(), "%", pctColor),
+  ]);
+  const checklist = d.checklist.length
+    ? `<div style="padding:12px 6px 0;font:400 12px Arial,sans-serif;color:${BODY};">` +
+      d.checklist.map((c) => `${c.ok ? "✓" : "✕"} ${escapeHtml(c.label)}`).join(" &nbsp; ") +
+      `</div>`
+    : "";
+  return tiles + checklist;
+}
+
 function uptime(d: UptimeData): string {
   const statusText = { up: "Operational", down: "Down", unknown: "No data yet" }[d.status];
   const statusColor = { up: "#6cad45", down: "#e5484d", unknown: INK }[d.status];
@@ -254,6 +273,7 @@ function serviceSection(type: ServiceType, data: unknown, accent: string): strin
   else if (type === "uptime") body = uptime(data as UptimeData);
   else if (type === "search_console") body = searchConsole(data as SearchConsoleData, accent);
   else if (type === "accessibility") body = accessibility(data as AccessibilityData);
+  else if (type === "google_business") body = googleBusiness(data as GoogleBusinessData);
   else body = traffic(data as TrafficData, accent);
 
   const subtitle =

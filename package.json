@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "node --test src/lib/metrics/ga4.test.ts src/lib/metrics/gsc.test.ts src/lib/metrics/accessibility-parse.test.ts src/lib/clicks/normalize.test.ts src/lib/ai-visibility/mention.test.ts src/components/metrics/format.test.ts"
+    "test": "node --test src/lib/metrics/ga4.test.ts src/lib/metrics/gsc.test.ts src/lib/metrics/accessibility-parse.test.ts src/lib/metrics/gbp.test.ts src/lib/clicks/normalize.test.ts src/lib/ai-visibility/mention.test.ts src/components/metrics/format.test.ts"
   },
   "dependencies": {
     "@sentry/nextjs": "^10.63.0",

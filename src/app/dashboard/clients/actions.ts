@@ -288,6 +288,11 @@ export async function refreshMetricsAction(
     ?.config as { gsc_site_url?: string | null } | null | undefined;
   const gscSiteUrl = gscConfig?.gsc_site_url ?? null;
 
+  // Google Business Profile place id (resolved in settings) from the service config.
+  const gbpConfig = (enabledRows ?? []).find((r) => r.service_type === "google_business")
+    ?.config as { place_id?: string | null } | null | undefined;
+  const placeId = gbpConfig?.place_id ?? null;
+
   const results = await Promise.all(
     enabled.map(async (service_type) => {
       try {
@@ -302,6 +307,7 @@ export async function refreshMetricsAction(
         const result = await runService(service_type, client.website_url, {
           ga4PropertyId,
           gscSiteUrl,
+          placeId,
         });
         if (!result.ok) return { service_type, ok: false, error: result.error };
 

@@ -6,11 +6,16 @@ import { runSecurity } from "./security";
 import { runTraffic } from "./traffic";
 import { runSearchConsole } from "./search-console";
 import { runAccessibility } from "./accessibility";
+import { runGoogleBusiness } from "./google-business";
 
 export * from "./types";
 
 /** Extra per-run inputs a provider may need beyond the URL. */
-export type RunOptions = { ga4PropertyId?: string | null; gscSiteUrl?: string | null };
+export type RunOptions = {
+  ga4PropertyId?: string | null;
+  gscSiteUrl?: string | null;
+  placeId?: string | null;
+};
 
 /** Provider registry — one entry per service_type.
  * `uptime` is driven by src/lib/uptime.ts (it needs DB access to log checks and
@@ -25,6 +30,7 @@ const PROVIDERS: Record<
   uptime: async () => ({ ok: false, error: "uptime is handled by the uptime monitor" }),
   search_console: (url, opts) => runSearchConsole(url, opts.gscSiteUrl),
   accessibility: (url) => runAccessibility(url),
+  google_business: (url, opts) => runGoogleBusiness(url, opts.placeId),
 };
 
 export function runService(

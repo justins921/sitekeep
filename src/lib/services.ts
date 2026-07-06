@@ -9,6 +9,7 @@ export const SERVICE_TYPES = [
   "uptime",
   "search_console",
   "accessibility",
+  "google_business",
 ] as const;
 export type ServiceType = (typeof SERVICE_TYPES)[number];
 
@@ -45,5 +46,10 @@ export const SERVICE_META: Record<
     label: "Accessibility",
     blurb: "Automated WCAG 2.1 AA scan — flags failing checks with fixes.",
     tint: "green",
+  },
+  google_business: {
+    label: "Google Business Profile",
+    blurb: "Rating, reviews, and profile completeness from Google Maps.",
+    tint: "blue",
   },
 };

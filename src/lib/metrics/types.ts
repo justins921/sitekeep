@@ -159,6 +159,37 @@ export type AccessibilityData = {
   passed: A11yAudit[]; // title + group only (collapsible in the UI)
 };
 
+// ---- Google Business Profile (public data via Places API) --------------------
+
+export type GbpReview = {
+  author: string;
+  rating: number; // 0–5
+  text: string;
+  relative: string; // "a month ago"
+};
+
+/** One item in the profile-completeness checklist. */
+export type GbpChecklistItem = { key: string; label: string; ok: boolean };
+
+export type GoogleBusinessData = {
+  connected: boolean; // false → clean "not connected" empty state
+  demo: boolean; // true when rendered from sample data (no API key)
+  error: string | null;
+  place_id: string | null;
+  name: string | null;
+  maps_url: string | null;
+  address: string | null;
+  phone: string | null;
+  website: string | null;
+  business_status: string | null;
+  rating: number | null; // 0–5
+  reviews_total: number | null;
+  reviews: GbpReview[]; // a few recent reviews
+  photos_count: number | null;
+  checklist: GbpChecklistItem[]; // completeness signals
+  completeness_pct: number; // 0–100 (share of checklist satisfied)
+};
+
 export type ServiceDataMap = {
   page_speed: PageSpeedData;
   traffic: TrafficData;
@@ -166,6 +197,7 @@ export type ServiceDataMap = {
   uptime: UptimeData;
   search_console: SearchConsoleData;
   accessibility: AccessibilityData;
+  google_business: GoogleBusinessData;
 };
 
 /** A latest snapshot as read back for rendering. */
