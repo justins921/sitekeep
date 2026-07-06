@@ -19,6 +19,7 @@ import {
 import { recordUptimeCheck, writeUptimeSnapshot } from "@/lib/uptime";
 import { detectSignificantSwings } from "@/lib/auto-annotations";
 import { resolveMembership } from "@/lib/agency";
+import { detectSitePlatform } from "@/lib/site-platform";
 
 export type ClientFormState = { error: string } | null;
 
@@ -333,6 +334,20 @@ export async function refreshMetricsAction(
     await detectSignificantSwings(supabase, clientId, client.agency_id, new Date());
   } catch {
     // best-effort — annotations are derived, never part of the refresh contract
+  }
+
+  // Hidden platform check (drives upsell targeting — Semflow needs Webflow/Framer).
+  // Best-effort; a detection miss must never fail the refresh.
+  try {
+    const platform = await detectSitePlatform(client.website_url);
+    if (platform) {
+      await supabase
+        .from("clients")
+        .update({ site_platform: platform, site_platform_checked_at: new Date().toISOString() })
+        .eq("id", clientId);
+    }
+  } catch {
+    // ignore — platform is optional targeting metadata
   }
 
   // Composite health score: recompute from the just-written snapshots (the SQL

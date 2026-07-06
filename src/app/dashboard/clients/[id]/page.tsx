@@ -22,6 +22,7 @@ import { GrowAccountCTA } from "@/components/growth/GrowAccountCTA";
 import { computeUpsells } from "@/lib/growth";
 import { affiliateTools } from "@/lib/affiliate";
 import type { GoogleBusinessData, SearchConsoleData } from "@/lib/metrics/types";
+import type { SitePlatform } from "@/lib/site-platform";
 
 // PageSpeed Insights can take 10–20s; give the refresh Server Action (which
 // runs in this route's function) room beyond the default timeout.
@@ -79,6 +80,7 @@ export default async function ClientDashboardTab({
         gscConnected: Boolean(gscData?.connected),
         gscPosition: gscData?.connected ? gscData.position : null,
         healthScore: health?.score ?? null,
+        sitePlatform: (client.site_platform as SitePlatform | null) ?? null,
       })
         .map((n) => {
           const tool = upsellTools.find((t) => t.key === n.key);

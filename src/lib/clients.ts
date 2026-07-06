@@ -17,6 +17,9 @@ export type Client = {
   is_active: boolean;
   ga4_property_id: string | null;
   created_at: string;
+  clicks_project_id: number | null;
+  site_platform: string | null;
+  site_platform_checked_at: string | null;
 };
 
 export type ClientService = {

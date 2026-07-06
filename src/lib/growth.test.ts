@@ -14,6 +14,7 @@ const clean: UpsellSignals = {
   gscConnected: true,
   gscPosition: 4,
   healthScore: 95,
+  sitePlatform: "webflow",
 };
 
 test("no nudges when everything is healthy", () => {
@@ -52,6 +53,21 @@ test("healthy AI but weak GBP → only Semflow, not Clicks", () => {
   const n = computeUpsells({ ...clean, gbpReviews: 3 });
   assert.ok(n.some((x) => x.key === "semflow"));
   assert.ok(!n.some((x) => x.key === "clicks")); // AI is healthy → no Clicks nudge
+});
+
+test("Semflow gated on platform: WordPress site gets no Semflow nudge despite SEO gap", () => {
+  const n = computeUpsells({ ...clean, gscPosition: 30, sitePlatform: "wordpress" });
+  assert.ok(!n.some((x) => x.key === "semflow"));
+});
+
+test("Semflow fires on a Framer site with an SEO gap", () => {
+  const n = computeUpsells({ ...clean, gscPosition: 30, sitePlatform: "framer" });
+  assert.ok(n.some((x) => x.key === "semflow"));
+});
+
+test("unknown platform → no Semflow nudge (safe default)", () => {
+  const n = computeUpsells({ ...clean, gscPosition: 30, sitePlatform: null });
+  assert.ok(!n.some((x) => x.key === "semflow"));
 });
 
 test("no GSC/GBP connection → those gaps don't fire", () => {

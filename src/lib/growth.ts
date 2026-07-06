@@ -3,6 +3,8 @@
 // unit-tests and the thresholds live in one place. A tool only nudges when a
 // concrete gap fires — so the CTA reads as a smart suggestion, not a standing ad.
 
+import type { SitePlatform } from "./site-platform";
+
 export type UpsellSignals = {
   aiEnabled: boolean; // AI Visibility flag on + data present
   aiCited: number | null; // engines the brand is cited in
@@ -15,6 +17,7 @@ export type UpsellSignals = {
   gscConnected: boolean;
   gscPosition: number | null; // avg position (lower is better)
   healthScore: number | null; // 0–100
+  sitePlatform: SitePlatform | null; // hidden check — Semflow needs Webflow/Framer
 };
 
 export type UpsellNudge = { key: string; reason: string };
@@ -60,6 +63,10 @@ function clicksReason(s: UpsellSignals): string | null {
 
 /** Reason to nudge Semflow (SEO), or null if no signal fires. */
 function semflowReason(s: UpsellSignals): string | null {
+  // Hidden gate: Semflow's SEO tooling only supports Webflow/Framer-built sites,
+  // so never nudge it for other platforms (or when the platform is unknown).
+  if (s.sitePlatform !== "webflow" && s.sitePlatform !== "framer") return null;
+
   if (seoHasGap(s)) {
     return `Average search position is ${Math.round(s.gscPosition as number)} — an SEO push could lift rankings.`;
   }
