@@ -19,6 +19,9 @@ import { getAiVisibility } from "@/lib/ai-visibility";
 import { AiVisibilityCard } from "@/components/ai-visibility/AiVisibilityCard";
 import { RefreshAiVisibilityButton } from "@/components/ai-visibility/RefreshAiVisibilityButton";
 import { GrowAccountCTA } from "@/components/growth/GrowAccountCTA";
+import { computeUpsells } from "@/lib/growth";
+import { affiliateTools } from "@/lib/affiliate";
+import type { GoogleBusinessData, SearchConsoleData } from "@/lib/metrics/types";
 
 // PageSpeed Insights can take 10–20s; give the refresh Server Action (which
 // runs in this route's function) room beyond the default timeout.
@@ -57,6 +60,31 @@ export default async function ClientDashboardTab({
   // agency's flag is off, in which case we render nothing.
   const aiv = await getAiVisibility(client.agency_id, id);
   const showAiv = aiv.ok || aiv.reason !== "disabled";
+
+  // Contextual affiliate nudges — only fire on a real opportunity (see computeUpsells).
+  const gbpData = snapshots.google_business?.data as GoogleBusinessData | undefined;
+  const gscData = snapshots.search_console?.data as SearchConsoleData | undefined;
+  const upsellTools = affiliateTools();
+  const growthNudges = readOnly
+    ? []
+    : computeUpsells({
+        aiEnabled: aiv.ok,
+        aiCited: aiv.ok ? aiv.data.citedCount : null,
+        aiEngines: aiv.ok ? aiv.data.engines.length : null,
+        aiScoreLabel: aiv.ok ? aiv.data.scoreLabel : null,
+        gbpConnected: Boolean(gbpData?.connected),
+        gbpCompleteness: gbpData?.completeness_pct ?? null,
+        gbpRating: gbpData?.rating ?? null,
+        gbpReviews: gbpData?.reviews_total ?? null,
+        gscConnected: Boolean(gscData?.connected),
+        gscPosition: gscData?.connected ? gscData.position : null,
+        healthScore: health?.score ?? null,
+      })
+        .map((n) => {
+          const tool = upsellTools.find((t) => t.key === n.key);
+          return tool ? { key: tool.key, name: tool.name, url: tool.url, reason: n.reason } : null;
+        })
+        .filter((n): n is { key: string; name: string; url: string; reason: string } => n !== null);
 
   // Paused-client activation prompts.
   const showConfirm = confirm === "1" && !client.is_active && entitled;
@@ -168,10 +196,10 @@ export default async function ClientDashboardTab({
         </div>
       )}
 
-      {/* Agency-only upsell nudge (never on the public white-label dashboard) */}
-      {!readOnly && (
+      {/* Agency-only upsell nudge — only when a real opportunity fires */}
+      {growthNudges.length > 0 && (
         <div className="mt-10">
-          <GrowAccountCTA />
+          <GrowAccountCTA nudges={growthNudges} />
         </div>
       )}
 
