@@ -8,14 +8,23 @@ export type SitePlatform = "webflow" | "framer" | "wordpress" | "shopify" | "oth
 /** Platforms Semflow supports (SEO tooling built for these builders). */
 export const SEMFLOW_PLATFORMS: SitePlatform[] = ["webflow", "framer"];
 
-/** Classify a site from its raw HTML by builder-specific signatures. */
-export function detectPlatform(html: string): SitePlatform {
+/**
+ * Classify a site from its HTML (and optional `server` response header).
+ *
+ * IMPORTANT: we key off RUNTIME markers a published builder always emits
+ * (data-wf-page, the Framer runtime, generator meta) and the hosting header —
+ * never off asset-CDN URLs like website-files.com or framerusercontent.com. Those
+ * survive a migration: a site rebuilt on Vercel can still hotlink old Webflow
+ * images, which would otherwise read as a false "webflow" (this bit us on a real
+ * client). So asset hotlinks are deliberately NOT a signal.
+ */
+export function detectPlatform(html: string, opts: { server?: string | null } = {}): SitePlatform {
   const h = html.toLowerCase();
+  const server = (opts.server ?? "").toLowerCase();
 
-  // Framer — asset host + generator + framer badge/attrs are unambiguous.
+  // Framer — its runtime/generator, or a Framer hosting header.
   if (
-    h.includes("framerusercontent.com") ||
-    h.includes("framer.com/") ||
+    server.includes("framer") ||
     /content=["']framer/.test(h) ||
     h.includes("data-framer-") ||
     h.includes("__framer")
@@ -23,12 +32,13 @@ export function detectPlatform(html: string): SitePlatform {
     return "framer";
   }
 
-  // Webflow — data-wf-* on <html>, generator meta, or the website-files.com CDN.
+  // Webflow — data-wf-* runtime attributes, generator meta, or a Webflow header.
+  // (NOT website-files.com — that CDN is hotlinkable and outlives a migration.)
   if (
+    server.includes("webflow") ||
     h.includes("data-wf-page") ||
     h.includes("data-wf-site") ||
-    /content=["']webflow/.test(h) ||
-    h.includes(".website-files.com")
+    /content=["']webflow/.test(h)
   ) {
     return "webflow";
   }
@@ -62,8 +72,9 @@ export async function detectSitePlatform(url: string): Promise<SitePlatform | nu
       },
     });
     if (!res.ok) return null;
+    const server = res.headers.get("server");
     const html = (await res.text()).slice(0, 200_000); // cap: signatures are in <head>
-    return detectPlatform(html);
+    return detectPlatform(html, { server });
   } catch {
     return null;
   } finally {
