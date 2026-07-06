@@ -18,6 +18,7 @@ import { startClientCheckoutAction, confirmActivateAction } from "../actions";
 import { getAiVisibility } from "@/lib/ai-visibility";
 import { AiVisibilityCard } from "@/components/ai-visibility/AiVisibilityCard";
 import { RefreshAiVisibilityButton } from "@/components/ai-visibility/RefreshAiVisibilityButton";
+import { GrowAccountCTA } from "@/components/growth/GrowAccountCTA";
 
 // PageSpeed Insights can take 10–20s; give the refresh Server Action (which
 // runs in this route's function) room beyond the default timeout.
@@ -164,6 +165,13 @@ export default async function ClientDashboardTab({
               refreshButton={readOnly ? undefined : <RefreshAiVisibilityButton />}
             />
           </div>
+        </div>
+      )}
+
+      {/* Agency-only upsell nudge (never on the public white-label dashboard) */}
+      {!readOnly && (
+        <div className="mt-10">
+          <GrowAccountCTA />
         </div>
       )}
 
