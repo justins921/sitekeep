@@ -61,7 +61,7 @@ export function ServiceToggles({
                 onClick={() => toggle(type)}
                 disabled={pending}
                 aria-pressed={on}
-                className="flex w-full items-start justify-between gap-3 text-left disabled:opacity-70"
+                className="flex w-full items-start justify-between gap-3 text-left disabled:opacity-70 focus-ring"
               >
                 <span>
                   <span className="block font-bold text-ink">{meta.label}</span>

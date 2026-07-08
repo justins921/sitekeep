@@ -19,7 +19,7 @@ export default async function ClientLayout({
 
   return (
     <div>
-      <Link href="/dashboard" className="text-sm font-medium text-muted hover:text-ink">
+      <Link href="/dashboard" className="text-sm font-medium text-muted hover:text-ink focus-ring transition-colors">
         ← Clients
       </Link>
 
@@ -37,7 +37,7 @@ export default async function ClientLayout({
             href={client.website_url}
             target="_blank"
             rel="noreferrer"
-            className="mt-1 inline-block text-sm text-brand hover:underline"
+            className="mt-1 inline-block text-sm text-brand hover:underline focus-ring"
           >
             {client.website_url}
           </a>

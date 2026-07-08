@@ -115,7 +115,7 @@ function AnnotationForm({
         <button
           type="button"
           onClick={onDone}
-          className="text-sm font-medium text-muted hover:text-ink"
+          className="text-sm font-medium text-muted hover:text-ink focus-ring transition-colors"
         >
           Cancel
         </button>
@@ -188,7 +188,7 @@ function AnnotationRow({
         <button
           type="button"
           onClick={() => setMenuOpen((v) => !v)}
-          className="rounded-lg px-2 py-1 text-muted hover:bg-canvas-alt hover:text-ink"
+          className="rounded-lg px-2 py-1 text-muted hover:bg-canvas-alt hover:text-ink focus-ring transition-colors"
           aria-label="Note actions"
         >
           ⋯
@@ -201,7 +201,7 @@ function AnnotationRow({
                 setMenuOpen(false);
                 setEditing(true);
               }}
-              className="block w-full px-3 py-2 text-left text-sm text-body hover:bg-canvas-alt"
+              className="block w-full px-3 py-2 text-left text-sm text-body hover:bg-canvas-alt focus-ring transition-colors"
             >
               Edit
             </button>
@@ -212,7 +212,7 @@ function AnnotationRow({
                 setMenuOpen(false);
                 startTransition(() => deleteAnnotationAction(clientId, annotation.id));
               }}
-              className="block w-full px-3 py-2 text-left text-sm text-accent-magenta hover:bg-fill-pink disabled:opacity-50"
+              className="block w-full px-3 py-2 text-left text-sm text-accent-magenta hover:bg-fill-pink disabled:opacity-50 focus-ring transition-colors"
             >
               {pending ? "Deleting…" : "Delete"}
             </button>

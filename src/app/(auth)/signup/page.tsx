@@ -27,11 +27,11 @@ export default async function SignupPage({
 
       <p className="mt-4 text-center text-xs text-muted">
         By creating an account you agree to our{" "}
-        <Link href="/terms" className="font-medium text-brand hover:underline">
+        <Link href="/terms" className="font-medium text-brand hover:underline focus-ring">
           Terms
         </Link>{" "}
         and{" "}
-        <Link href="/privacy" className="font-medium text-brand hover:underline">
+        <Link href="/privacy" className="font-medium text-brand hover:underline focus-ring">
           Privacy Policy
         </Link>
         .
@@ -41,7 +41,7 @@ export default async function SignupPage({
         Already have an account?{" "}
         <Link
           href={next ? `/login?next=${encodeURIComponent(next)}` : "/login"}
-          className="font-medium text-brand hover:underline"
+          className="font-medium text-brand hover:underline focus-ring"
         >
           Log in
         </Link>

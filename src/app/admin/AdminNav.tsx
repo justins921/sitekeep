@@ -23,7 +23,7 @@ export function AdminNav() {
             key={item.href}
             href={item.href}
             className={cn(
-              "rounded-xl px-3.5 py-2 text-sm font-medium transition-colors",
+              "rounded-xl px-3.5 py-2 text-sm font-medium transition-colors focus-ring",
               active
                 ? "bg-brand-50 text-brand"
                 : "text-body hover:bg-canvas-alt hover:text-ink",

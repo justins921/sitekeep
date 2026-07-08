@@ -120,7 +120,7 @@ function RemoveButton({ userId }: { userId: string }) {
       type="button"
       disabled={pending}
       onClick={() => start(() => removeMemberAction(userId))}
-      className="rounded-lg border border-line px-2.5 py-1.5 text-xs font-medium text-muted transition-colors hover:border-accent-magenta hover:text-accent-magenta disabled:opacity-50"
+      className="rounded-lg border border-line px-2.5 py-1.5 text-xs font-medium text-muted transition-colors hover:border-accent-magenta hover:text-accent-magenta disabled:opacity-50 focus-ring"
     >
       {pending ? "Removing…" : "Remove"}
     </button>
@@ -134,7 +134,7 @@ function RevokeButton({ inviteId }: { inviteId: string }) {
       type="button"
       disabled={pending}
       onClick={() => start(() => revokeInviteAction(inviteId))}
-      className="rounded-lg border border-line px-2.5 py-1.5 text-xs font-medium text-muted transition-colors hover:border-accent-magenta hover:text-accent-magenta disabled:opacity-50"
+      className="rounded-lg border border-line px-2.5 py-1.5 text-xs font-medium text-muted transition-colors hover:border-accent-magenta hover:text-accent-magenta disabled:opacity-50 focus-ring"
     >
       {pending ? "Revoking…" : "Revoke"}
     </button>

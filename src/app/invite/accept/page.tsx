@@ -25,7 +25,7 @@ const ERROR_COPY: Record<string, string> = {
 function Shell({ children }: { children: React.ReactNode }) {
   return (
     <main className="bg-wash flex min-h-screen flex-col items-center justify-center px-6 py-16">
-      <Link href="/" className="mb-8 inline-flex items-center gap-2 font-bold text-ink">
+      <Link href="/" className="mb-8 inline-flex items-center gap-2 font-bold text-ink focus-ring">
         <Spark className="text-brand" />
         <span className="text-lg tracking-tight">SiteKeep</span>
       </Link>

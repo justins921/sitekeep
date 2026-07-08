@@ -84,7 +84,7 @@ export function RequestChangeForm({ slug, accent }: { slug: string; accent: stri
         <button
           type="submit"
           disabled={pending}
-          className="rounded-xl px-5 py-3 text-sm font-semibold shadow-soft transition-opacity disabled:opacity-60"
+          className="rounded-xl px-5 py-3 text-sm font-semibold shadow-soft transition-opacity disabled:opacity-60 focus-ring"
           style={{ backgroundColor: accent, color: onAccent }}
         >
           {pending ? "Sending…" : "Send request"}

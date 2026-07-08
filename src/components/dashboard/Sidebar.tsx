@@ -62,7 +62,7 @@ export function Sidebar({
             href={item.href}
             onClick={close}
             className={cn(
-              "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
+              "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors focus-ring",
               active ? "bg-brand-50 text-brand" : "text-body hover:bg-canvas-alt hover:text-ink",
             )}
           >
@@ -77,7 +77,7 @@ export function Sidebar({
           href="/admin"
           onClick={close}
           className={cn(
-            "mt-2 flex items-center gap-3 rounded-xl border border-line px-3 py-2.5 text-sm font-medium transition-colors",
+            "mt-2 flex items-center gap-3 rounded-xl border border-line px-3 py-2.5 text-sm font-medium transition-colors focus-ring",
             pathname.startsWith("/admin")
               ? "bg-brand-50 text-brand"
               : "text-body hover:bg-canvas-alt hover:text-ink",
@@ -102,7 +102,7 @@ export function Sidebar({
       <form action="/auth/signout" method="post">
         <button
           type="submit"
-          className="mt-1 w-full rounded-xl px-3 py-2 text-left text-sm font-medium text-muted transition-colors hover:bg-canvas-alt hover:text-ink"
+          className="mt-1 w-full rounded-xl px-3 py-2 text-left text-sm font-medium text-muted transition-colors hover:bg-canvas-alt hover:text-ink focus-ring"
         >
           Sign out
         </button>
@@ -114,7 +114,7 @@ export function Sidebar({
     <Link
       href="/dashboard"
       onClick={close}
-      className="inline-flex items-center gap-2 font-bold text-ink"
+      className="inline-flex items-center gap-2 font-bold text-ink focus-ring"
     >
       <Spark className="text-brand" />
       <span className="text-lg tracking-tight">SiteKeep</span>
@@ -138,7 +138,7 @@ export function Sidebar({
           onClick={() => setOpen(true)}
           aria-label="Open menu"
           aria-expanded={open}
-          className="flex h-9 w-9 items-center justify-center rounded-xl border border-line text-ink hover:bg-canvas-alt"
+          className="flex h-9 w-9 items-center justify-center rounded-xl border border-line text-ink hover:bg-canvas-alt focus-ring transition-colors"
         >
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
             <path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
@@ -153,7 +153,7 @@ export function Sidebar({
             type="button"
             aria-label="Close menu"
             onClick={() => setOpen(false)}
-            className="absolute inset-0 bg-ink/40"
+            className="absolute inset-0 bg-ink/40 focus-ring"
           />
           <div className="absolute inset-y-0 left-0 flex w-72 max-w-[82%] flex-col bg-white shadow-soft-md">
             <div className="flex items-center justify-between px-5 py-4">
@@ -162,7 +162,7 @@ export function Sidebar({
                 type="button"
                 onClick={() => setOpen(false)}
                 aria-label="Close menu"
-                className="flex h-9 w-9 items-center justify-center rounded-xl border border-line text-ink hover:bg-canvas-alt"
+                className="flex h-9 w-9 items-center justify-center rounded-xl border border-line text-ink hover:bg-canvas-alt focus-ring transition-colors"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                   <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />

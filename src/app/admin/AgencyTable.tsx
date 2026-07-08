@@ -111,7 +111,7 @@ export function AgencyTable({ agencies }: { agencies: AdminAgency[] }) {
                   <button
                     type="button"
                     onClick={() => toggleSort(c.key)}
-                    className="inline-flex items-center gap-1 hover:text-ink"
+                    className="inline-flex items-center gap-1 hover:text-ink focus-ring transition-colors"
                   >
                     {c.label}
                     <span className="text-[10px]">
@@ -161,7 +161,7 @@ export function AgencyTable({ agencies }: { agencies: AdminAgency[] }) {
                         <button
                           type="submit"
                           onClick={(e) => e.stopPropagation()}
-                          className="whitespace-nowrap rounded-lg border border-line px-2.5 py-1.5 text-xs font-medium text-body transition-colors hover:border-brand hover:text-brand"
+                          className="whitespace-nowrap rounded-lg border border-line px-2.5 py-1.5 text-xs font-medium text-body transition-colors hover:border-brand hover:text-brand focus-ring"
                         >
                           View as
                         </button>

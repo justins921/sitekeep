@@ -29,7 +29,7 @@ export default async function JoinPage() {
 
   return (
     <main className="bg-wash flex min-h-screen flex-col items-center justify-center px-6 py-16">
-      <Link href="/" className="mb-8 inline-flex items-center gap-2 font-bold text-ink">
+      <Link href="/" className="mb-8 inline-flex items-center gap-2 font-bold text-ink focus-ring">
         <Spark className="text-brand" />
         <span className="text-lg tracking-tight">SiteKeep</span>
       </Link>
@@ -71,7 +71,7 @@ export default async function JoinPage() {
                 <form action="/auth/signout" method="post">
                   <button
                     type="submit"
-                    className="w-full rounded-xl px-3 py-2 text-sm font-medium text-muted hover:text-ink"
+                    className="w-full rounded-xl px-3 py-2 text-sm font-medium text-muted hover:text-ink focus-ring transition-colors"
                   >
                     Sign out
                   </button>

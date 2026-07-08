@@ -101,7 +101,7 @@ export function AuthForm({
             Password
           </label>
           {mode === "login" && (
-            <a href="/forgot-password" className="text-xs font-medium text-brand hover:underline">
+            <a href="/forgot-password" className="text-xs font-medium text-brand hover:underline focus-ring">
               Forgot password?
             </a>
           )}

@@ -83,6 +83,16 @@ h1, h2, h3, h4, h5, h6 {
   letter-spacing: -0.02em;
 }
 
+/* Shared keyboard-focus ring for hand-rolled interactive elements (buttons,
+   links, tabs) so focus is always visible — mirrors the Button primitive's ring
+   (2px brand ring + 2px surface offset). Only shows for keyboard nav. */
+.focus-ring:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--color-surface),
+    0 0 0 4px color-mix(in srgb, var(--color-brand) 40%, transparent);
+}
+
 /* Soft blue/magenta gradient wash used behind the hero + app canvas */
 .bg-wash {
   background:

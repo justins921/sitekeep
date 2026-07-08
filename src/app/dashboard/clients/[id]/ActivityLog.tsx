@@ -83,7 +83,7 @@ function EntryForm({
           <button
             type="button"
             onClick={onCancel}
-            className="text-sm font-medium text-muted hover:text-ink"
+            className="text-sm font-medium text-muted hover:text-ink focus-ring transition-colors"
           >
             Cancel
           </button>
@@ -187,7 +187,7 @@ export function ActivityLog({
                     type="button"
                     disabled={pending}
                     onClick={() => setEditing(entry.id)}
-                    className="text-xs font-medium text-brand disabled:opacity-50"
+                    className="text-xs font-medium text-brand disabled:opacity-50 focus-ring"
                   >
                     Edit
                   </button>
@@ -195,7 +195,7 @@ export function ActivityLog({
                     type="button"
                     disabled={pending}
                     onClick={() => run(() => deleteActivityAction(clientId, entry.id))}
-                    className="text-xs font-medium text-muted hover:text-accent-magenta disabled:opacity-50"
+                    className="text-xs font-medium text-muted hover:text-accent-magenta disabled:opacity-50 focus-ring transition-colors"
                   >
                     Delete
                   </button>

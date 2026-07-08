@@ -57,7 +57,7 @@ export default async function DashboardHome() {
                 <div className="flex items-start justify-between gap-2">
                   <Link
                     href={`/dashboard/clients/${c.id}`}
-                    className="min-w-0 flex-1"
+                    className="min-w-0 flex-1 focus-ring"
                   >
                     <h3 className="truncate font-bold text-ink">{c.company_name}</h3>
                     <p className="mt-1 truncate text-sm text-muted">
@@ -82,7 +82,7 @@ export default async function DashboardHome() {
                     href={`/d/${c.slug}`}
                     target="_blank"
                     rel="noreferrer"
-                    className="text-sm font-medium text-muted hover:text-brand"
+                    className="text-sm font-medium text-muted hover:text-brand focus-ring transition-colors"
                   >
                     View dashboard →
                   </a>

@@ -18,7 +18,7 @@ export default async function AdminLayout({
       <header className="border-b border-line bg-white">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-8 sm:py-4">
           <div className="flex items-center gap-6">
-            <Link href="/admin" className="inline-flex items-center gap-2 font-bold text-ink">
+            <Link href="/admin" className="inline-flex items-center gap-2 font-bold text-ink focus-ring">
               <Spark className="text-brand" />
               <span className="text-lg tracking-tight">SiteKeep</span>
               <span className="rounded-full bg-ink px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-white">
@@ -29,7 +29,7 @@ export default async function AdminLayout({
           </div>
           <Link
             href="/dashboard"
-            className="text-sm font-medium text-muted transition-colors hover:text-ink"
+            className="text-sm font-medium text-muted transition-colors hover:text-ink focus-ring"
           >
             ← My dashboard
           </Link>

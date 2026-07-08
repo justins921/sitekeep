@@ -141,7 +141,7 @@ function RequestCard({
             type="button"
             disabled={pending || !noteDirty}
             onClick={() => onRun(() => saveRequestNoteAction(clientId, req.id, note))}
-            className="text-xs font-medium text-brand disabled:text-faint"
+            className="text-xs font-medium text-brand disabled:text-faint focus-ring"
           >
             Save note
           </button>
@@ -149,7 +149,7 @@ function RequestCard({
             type="button"
             disabled={pending}
             onClick={() => onRun(() => deleteRequestAction(clientId, req.id))}
-            className="text-xs font-medium text-muted hover:text-accent-magenta disabled:opacity-50"
+            className="text-xs font-medium text-muted hover:text-accent-magenta disabled:opacity-50 focus-ring transition-colors"
           >
             Delete
           </button>

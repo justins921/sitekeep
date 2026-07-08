@@ -41,7 +41,7 @@ export default async function LoginPage({
         New to SiteKeep?{" "}
         <Link
           href={next ? `/signup?next=${encodeURIComponent(next)}` : "/signup"}
-          className="font-medium text-brand hover:underline"
+          className="font-medium text-brand hover:underline focus-ring"
         >
           Create an account
         </Link>

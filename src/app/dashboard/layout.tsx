@@ -28,7 +28,7 @@ export default async function DashboardLayout({
             <form action={exitViewAsAction}>
               <button
                 type="submit"
-                className="rounded-lg border border-orange-100 bg-white px-3 py-1.5 text-xs font-semibold text-accent-orange transition-colors hover:bg-orange-50"
+                className="rounded-lg border border-orange-100 bg-white px-3 py-1.5 text-xs font-semibold text-accent-orange transition-colors hover:bg-orange-50 focus-ring"
               >
                 Exit
               </button>
@@ -40,10 +40,10 @@ export default async function DashboardLayout({
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-6 text-sm text-muted">
             <span className="font-medium text-ink">{agency.name}</span>
             <div className="flex items-center gap-4">
-              <Link href="/terms" className="hover:text-ink">
+              <Link href="/terms" className="hover:text-ink focus-ring transition-colors">
                 Terms
               </Link>
-              <Link href="/privacy" className="hover:text-ink">
+              <Link href="/privacy" className="hover:text-ink focus-ring transition-colors">
                 Privacy
               </Link>
               <span className="text-faint">Powered by SiteKeep</span>

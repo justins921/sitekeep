@@ -39,7 +39,7 @@ export default function TermsPage() {
         of SiteKeep (the &ldquo;Service&rdquo;), operated by {ENTITY}
         (&ldquo;we,&rdquo; &ldquo;us&rdquo;). By creating an account or using the
         Service, you agree to these Terms and to our{" "}
-        <a href="/privacy" className="text-brand hover:underline">Privacy Policy</a>.
+        <a href="/privacy" className="text-brand hover:underline focus-ring">Privacy Policy</a>.
         If you do not agree, do not use the Service.
       </P>
 
