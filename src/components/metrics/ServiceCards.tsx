@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Badge, Card, StarRating } from "@/components/ui";
+import { Badge, Card, DisclosureButton, StarRating } from "@/components/ui";
 import { Gauge, GaugeLegend } from "@/components/charts/Gauge";
 import { RiskMeter } from "@/components/charts/RiskMeter";
 import { LineChart, ComparisonLegend } from "@/components/charts/LineChart";
@@ -779,14 +779,10 @@ export function AccessibilityCard({
 
       {data.passed.length > 0 && (
         <div className="mt-4">
-          <button
-            type="button"
-            onClick={() => setShowPassed((v) => !v)}
-            className="text-sm font-medium text-brand hover:text-brand-hover"
-          >
+          <DisclosureButton open={showPassed} onClick={() => setShowPassed((v) => !v)}>
             {showPassed ? "Hide" : "Show"} {data.passed.length} passing check
             {data.passed.length === 1 ? "" : "s"}
-          </button>
+          </DisclosureButton>
           {showPassed && (
             <ul className="mt-3 grid gap-2 sm:grid-cols-2">
               {data.passed.map((a) => (
@@ -913,7 +909,7 @@ export function GoogleBusinessCard({
           href={data.maps_url}
           target="_blank"
           rel="noopener noreferrer"
-          className="mt-4 inline-block text-sm font-medium text-brand hover:text-brand-hover"
+          className="mt-4 inline-block rounded-lg text-sm font-medium text-brand transition-colors hover:text-brand-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 focus-visible:ring-offset-2"
         >
           View on Google Maps →
         </a>

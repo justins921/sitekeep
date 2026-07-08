@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Badge, Card } from "@/components/ui";
+import { Badge, Card, DisclosureButton } from "@/components/ui";
 import { Gauge } from "@/components/charts/Gauge";
 import type {
   AiVisibility,
@@ -254,7 +254,7 @@ export function AiVisibilityCard({
                 <p className="mb-1.5 text-sm font-medium text-ink">{t.label}</p>
                 <div className="flex flex-wrap gap-1.5">
                   {t.keywords.map((k, j) => (
-                    <span key={j} className="rounded-full bg-canvas-alt px-2.5 py-1 text-xs font-medium text-muted">
+                    <span key={j} className="rounded-full bg-canvas-alt px-2.5 py-1 text-xs font-medium text-body">
                       {k}
                     </span>
                   ))}
@@ -268,14 +268,10 @@ export function AiVisibilityCard({
       {/* Recommendations (collapsible) */}
       {d.recommendations.length > 0 && (
         <div className="mt-5">
-          <button
-            type="button"
-            onClick={() => setShowRecs((v) => !v)}
-            className="text-sm font-medium text-brand hover:text-brand-hover"
-          >
+          <DisclosureButton open={showRecs} onClick={() => setShowRecs((v) => !v)}>
             {showRecs ? "Hide" : "Show"} {d.recommendations.length} recommendation
             {d.recommendations.length === 1 ? "" : "s"}
-          </button>
+          </DisclosureButton>
           {showRecs && (
             <ul className="mt-3 grid gap-2">
               {d.recommendations.map((r, i) => {
