@@ -57,7 +57,7 @@ function VariantSelect({
         value={value}
         disabled={pending}
         onChange={(e) => onChange(e.target.value)}
-        className="rounded-lg border border-line bg-white px-2.5 py-1.5 text-sm font-medium text-ink focus:border-brand focus:outline-none disabled:opacity-50"
+        className="rounded-lg border border-line bg-surface px-2.5 py-1.5 text-sm font-medium text-ink focus:border-brand focus:outline-none disabled:opacity-50"
       >
         {options.map((o) => (
           <option key={o} value={o}>

@@ -124,14 +124,14 @@ export function Sidebar({
   return (
     <>
       {/* Desktop sidebar */}
-      <aside className="hidden w-64 shrink-0 flex-col border-r border-line bg-white lg:flex">
+      <aside className="hidden w-64 shrink-0 flex-col border-r border-line bg-surface lg:flex">
         <div className="px-5 py-6">{brand}</div>
         <nav className="flex-1 space-y-1 px-3">{navLinks}</nav>
         {footer}
       </aside>
 
       {/* Mobile top bar */}
-      <header className="sticky top-0 z-30 flex items-center justify-between border-b border-line bg-white px-4 py-3 lg:hidden">
+      <header className="sticky top-0 z-30 flex items-center justify-between border-b border-line bg-surface px-4 py-3 lg:hidden">
         {brand}
         <button
           type="button"
@@ -155,7 +155,7 @@ export function Sidebar({
             onClick={() => setOpen(false)}
             className="absolute inset-0 bg-ink/40 focus-ring"
           />
-          <div className="absolute inset-y-0 left-0 flex w-72 max-w-[82%] flex-col bg-white shadow-soft-md">
+          <div className="absolute inset-y-0 left-0 flex w-72 max-w-[82%] flex-col bg-surface shadow-soft-md">
             <div className="flex items-center justify-between px-5 py-4">
               {brand}
               <button

@@ -52,17 +52,17 @@ export default function LineChartImpl({
   return (
     <ResponsiveContainer width="100%" height={height}>
       <RLineChart data={data} margin={{ top: 8, right: 8, bottom: 4, left: -18 }}>
-        <CartesianGrid stroke="#eeeeee" vertical={false} />
+        <CartesianGrid stroke="#26303a" vertical={false} />
         <XAxis
           dataKey="label"
           tickFormatter={fmtDate}
-          tick={{ fontSize: 11, fill: "#646464" }}
+          tick={{ fontSize: 11, fill: "#8b98a5" }}
           tickLine={false}
-          axisLine={{ stroke: "#e5e5e5" }}
+          axisLine={{ stroke: "#2a3742" }}
           minTickGap={28}
         />
         <YAxis
-          tick={{ fontSize: 11, fill: "#646464" }}
+          tick={{ fontSize: 11, fill: "#8b98a5" }}
           tickLine={false}
           axisLine={false}
           width={44}
@@ -70,11 +70,11 @@ export default function LineChartImpl({
         />
         <Tooltip
           labelFormatter={(v) => fmtDate(String(v))}
-          contentStyle={{
+          contentStyle={{ background: "#141b22", color: "#e6edf3",
             borderRadius: 12,
-            border: "1px solid #e5e5e5",
+            border: "1px solid #2a3742",
             fontSize: 12,
-            boxShadow: "0 6px 20px rgba(14,33,61,0.08)",
+            boxShadow: "0 6px 20px rgba(0,0,0,0.5)",
           }}
           formatter={(value, name) => [
             value ?? "",

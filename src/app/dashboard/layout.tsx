@@ -28,7 +28,7 @@ export default async function DashboardLayout({
             <form action={exitViewAsAction}>
               <button
                 type="submit"
-                className="rounded-lg border border-orange-100 bg-white px-3 py-1.5 text-xs font-semibold text-accent-orange transition-colors hover:bg-orange-50 focus-ring"
+                className="rounded-lg border border-orange-100 bg-surface px-3 py-1.5 text-xs font-semibold text-accent-orange transition-colors hover:bg-orange-50 focus-ring"
               >
                 Exit
               </button>

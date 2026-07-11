@@ -18,7 +18,7 @@ export function Gauge({
     <div className="flex flex-col items-center">
       <div className="relative" style={{ width: g.size, height: g.size }}>
         <svg width={g.size} height={g.size} viewBox={`0 0 ${g.size} ${g.size}`}>
-          <circle cx={g.cx} cy={g.cx} r={g.r} fill="none" stroke="#eeeeee" strokeWidth={g.stroke} />
+          <circle cx={g.cx} cy={g.cx} r={g.r} fill="none" stroke="#26303a" strokeWidth={g.stroke} />
           <circle
             cx={g.cx}
             cy={g.cx}
@@ -46,9 +46,9 @@ export function Gauge({
 /** The 0–49 / 50–89 / 90–100 color legend shown under the gauges. */
 export function GaugeLegend() {
   const items: Array<[string, string]> = [
-    ["0–49", "#cb52cc"],
-    ["50–89", "#e87c2e"],
-    ["90–100", "#6cad45"],
+    ["0–49", "#e5484d"],
+    ["50–89", "#f5a524"],
+    ["90–100", "#35c46a"],
   ];
   return (
     <div className="flex items-center gap-4">

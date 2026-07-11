@@ -81,11 +81,11 @@ export default async function PublicDashboardPage({
             <img
               src={dash.agency.logo_url}
               alt={dash.agency.name}
-              className="h-10 w-10 rounded-lg bg-white/90 object-contain p-1"
+              className="h-10 w-10 rounded-lg bg-surface/90 object-contain p-1"
             />
           ) : (
             <span
-              className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/20 text-base font-bold"
+              className="flex h-10 w-10 items-center justify-center rounded-lg bg-surface/20 text-base font-bold"
               style={{ color: onBrand }}
             >
               {dash.agency.name.slice(0, 1).toUpperCase()}

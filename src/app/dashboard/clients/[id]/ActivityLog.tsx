@@ -16,7 +16,7 @@ import {
 } from "./activity-actions";
 
 const inputClass =
-  "w-full rounded-xl border border-line bg-white px-4 py-2.5 text-sm text-ink placeholder:text-faint focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand/20";
+  "w-full rounded-xl border border-line bg-surface px-4 py-2.5 text-sm text-ink placeholder:text-faint focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand/20";
 
 type Fields = { title: string; description: string; category: string; performed_at: string };
 
@@ -67,7 +67,7 @@ function EntryForm({
           aria-label="Category"
           value={f.category}
           onChange={(e) => setF({ ...f, category: e.target.value })}
-          className="rounded-xl border border-line bg-white px-3 py-2.5 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-brand/20"
+          className="rounded-xl border border-line bg-surface px-3 py-2.5 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-brand/20"
         >
           <option value="">No category</option>
           {ACTIVITY_CATEGORIES.map((c) => (

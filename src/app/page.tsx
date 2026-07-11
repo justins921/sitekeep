@@ -321,7 +321,7 @@ export default function Home() {
           {FAQS.map((f) => (
             <details
               key={f.q}
-              className="group rounded-[var(--radius-card)] border border-line bg-white p-5"
+              className="group rounded-[var(--radius-card)] border border-line bg-surface p-5"
             >
               <summary className="flex cursor-pointer list-none items-center justify-between font-semibold text-ink">
                 {f.q}

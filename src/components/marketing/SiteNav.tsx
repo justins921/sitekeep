@@ -3,7 +3,7 @@ import { ButtonLink, Spark } from "@/components/ui";
 
 export function SiteNav() {
   return (
-    <header className="sticky top-0 z-40 border-b border-line/70 bg-white/80 backdrop-blur">
+    <header className="sticky top-0 z-40 border-b border-line/70 bg-surface/80 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
         <Link href="/" className="inline-flex items-center gap-2 font-bold text-ink focus-ring">
           <Spark className="text-brand" />

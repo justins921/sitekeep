@@ -6,7 +6,7 @@ import { normalizeHex, readableText, safeAccent } from "@/lib/color";
 import { updateBrandingAction, type BrandingState } from "./actions";
 
 const inputClass =
-  "w-full rounded-xl border border-line bg-white px-4 py-3 text-sm text-ink placeholder:text-faint focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand/20";
+  "w-full rounded-xl border border-line bg-surface px-4 py-3 text-sm text-ink placeholder:text-faint focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand/20";
 
 export function SettingsForm({
   defaults,
@@ -72,7 +72,7 @@ export function SettingsForm({
               type="color"
               value={color}
               onChange={(e) => setColor(e.target.value)}
-              className="h-11 w-14 cursor-pointer rounded-lg border border-line bg-white p-1"
+              className="h-11 w-14 cursor-pointer rounded-lg border border-line bg-surface p-1"
             />
             <input
               aria-label="Brand color hex"
@@ -145,11 +145,11 @@ export function SettingsForm({
               <img
                 src={logoPreview}
                 alt="Logo preview"
-                className="h-9 w-9 rounded-lg bg-white/90 object-contain p-1"
+                className="h-9 w-9 rounded-lg bg-surface/90 object-contain p-1"
               />
             ) : (
               <span
-                className="flex h-9 w-9 items-center justify-center rounded-lg bg-white/20 text-sm font-bold"
+                className="flex h-9 w-9 items-center justify-center rounded-lg bg-surface/20 text-sm font-bold"
                 style={{ color: headerText }}
               >
                 {name.slice(0, 1).toUpperCase() || "A"}

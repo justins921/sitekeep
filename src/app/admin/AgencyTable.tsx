@@ -88,14 +88,14 @@ export function AgencyTable({ agencies }: { agencies: AdminAgency[] }) {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search agency or owner email…"
-          className="w-full max-w-sm rounded-xl border border-line bg-white px-4 py-2.5 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand-100"
+          className="w-full max-w-sm rounded-xl border border-line bg-surface px-4 py-2.5 text-sm outline-none focus:border-brand focus:ring-2 focus:ring-brand-100"
         />
         <span className="shrink-0 text-sm text-muted">
           {rows.length} of {agencies.length}
         </span>
       </div>
 
-      <div className="overflow-x-auto rounded-[var(--radius-card-lg)] border border-line bg-white shadow-soft">
+      <div className="overflow-x-auto rounded-[var(--radius-card-lg)] border border-line bg-surface shadow-soft">
         <table className="w-full min-w-[860px] text-left text-sm">
           <thead>
             <tr className="border-b border-line">
@@ -198,7 +198,7 @@ function AgencyDetail({ agency }: { agency: AdminAgency }) {
         {agency.clients.map((c) => (
           <div
             key={c.id}
-            className="flex items-center justify-between gap-3 rounded-[var(--radius-card)] border border-line bg-white p-3"
+            className="flex items-center justify-between gap-3 rounded-[var(--radius-card)] border border-line bg-surface p-3"
           >
             <div className="min-w-0">
               <div className="flex items-center gap-2">

@@ -78,7 +78,7 @@ export function AiVisibilitySettings({
             value={projectId}
             onChange={(e) => setProjectId(e.target.value)}
             placeholder="e.g. 1537"
-            className="w-full rounded-xl border border-line bg-white px-4 py-2.5 text-sm text-ink placeholder:text-faint focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand/20"
+            className="w-full rounded-xl border border-line bg-surface px-4 py-2.5 text-sm text-ink placeholder:text-faint focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand/20"
           />
         </div>
         <div className="space-y-1.5">
@@ -89,7 +89,7 @@ export function AiVisibilitySettings({
             id="clicks_auth_mode"
             value={authMode}
             onChange={(e) => setAuthMode(e.target.value as "session" | "token")}
-            className="w-full rounded-xl border border-line bg-white px-4 py-2.5 text-sm text-ink focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand/20"
+            className="w-full rounded-xl border border-line bg-surface px-4 py-2.5 text-sm text-ink focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand/20"
           >
             <option value="session">Session cookie (pilot)</option>
             <option value="token">API token (Bearer)</option>
@@ -108,7 +108,7 @@ export function AiVisibilitySettings({
           onChange={(e) => setCredential(e.target.value)}
           rows={2}
           placeholder={connected ? "•••••••• stored" : "Paste the credential"}
-          className="w-full rounded-xl border border-line bg-white px-4 py-2.5 font-mono text-xs text-ink placeholder:text-faint focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand/20"
+          className="w-full rounded-xl border border-line bg-surface px-4 py-2.5 font-mono text-xs text-ink placeholder:text-faint focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand/20"
         />
       </div>
 

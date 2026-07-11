@@ -45,7 +45,7 @@ export function TeamManager({ roster }: { roster: TeamRoster }) {
                 type="email"
                 required
                 placeholder="teammate@example.com"
-                className="w-full rounded-xl border border-line bg-white px-4 py-2.5 text-sm text-ink placeholder:text-faint focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand/20"
+                className="w-full rounded-xl border border-line bg-surface px-4 py-2.5 text-sm text-ink placeholder:text-faint focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand/20"
               />
             </div>
             <Button type="submit" disabled={pending}>
@@ -67,7 +67,7 @@ export function TeamManager({ roster }: { roster: TeamRoster }) {
           {roster.members.map((m) => (
             <div
               key={m.user_id}
-              className="flex items-center justify-between gap-3 rounded-[var(--radius-card)] border border-line bg-white p-4"
+              className="flex items-center justify-between gap-3 rounded-[var(--radius-card)] border border-line bg-surface p-4"
             >
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold text-ink">

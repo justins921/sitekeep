@@ -58,7 +58,7 @@ export function GoogleBusinessSettings({
             value={value}
             onChange={(e) => setValue(e.target.value)}
             placeholder="Fox Valley Physical Therapy, Oshkosh WI"
-            className="w-full rounded-xl border border-line bg-white px-4 py-2.5 text-sm text-ink placeholder:text-faint focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand/20"
+            className="w-full rounded-xl border border-line bg-surface px-4 py-2.5 text-sm text-ink placeholder:text-faint focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand/20"
           />
         </div>
         <Button size="sm" onClick={save} disabled={pending}>

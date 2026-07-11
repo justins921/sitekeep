@@ -6,7 +6,7 @@ import { readableText } from "@/lib/color";
 import { submitRequestAction, type RequestFormState } from "./actions";
 
 const inputClass =
-  "w-full rounded-xl border border-line bg-white px-4 py-3 text-sm text-ink placeholder:text-faint focus:outline-none focus:ring-2 focus:ring-black/10";
+  "w-full rounded-xl border border-line bg-surface px-4 py-3 text-sm text-ink placeholder:text-faint focus:outline-none focus:ring-2 focus:ring-black/10";
 
 /**
  * White-label "Request a change" form on the public dashboard. Posts to the

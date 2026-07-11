@@ -5,7 +5,7 @@ import { Button } from "@/components/ui";
 import { updatePassword, type UpdatePasswordState } from "../../(auth)/actions";
 
 const inputClass =
-  "w-full rounded-xl border border-line bg-white px-4 py-3 text-sm text-ink placeholder:text-faint focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand/20";
+  "w-full rounded-xl border border-line bg-surface px-4 py-3 text-sm text-ink placeholder:text-faint focus:border-brand-300 focus:outline-none focus:ring-2 focus:ring-brand/20";
 
 export function ResetForm() {
   const [state, action, pending] = useActionState<UpdatePasswordState, FormData>(

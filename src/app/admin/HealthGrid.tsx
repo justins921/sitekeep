@@ -28,7 +28,7 @@ export function HealthGrid({ agencies }: { agencies: AdminAgency[] }) {
 
   if (tiles.length === 0) {
     return (
-      <p className="rounded-[var(--radius-card)] border border-line bg-white p-6 text-sm text-muted">
+      <p className="rounded-[var(--radius-card)] border border-line bg-surface p-6 text-sm text-muted">
         No client dashboards yet.
       </p>
     );
@@ -77,7 +77,7 @@ export function HealthGrid({ agencies }: { agencies: AdminAgency[] }) {
             <div className="mt-3">
               <p className="truncate text-xs text-muted">{t.agencyName}</p>
               {!t.is_active && (
-                <span className="mt-1 inline-block rounded-full bg-white/70 px-1.5 py-0.5 text-[10px] font-medium text-muted">
+                <span className="mt-1 inline-block rounded-full bg-surface/70 px-1.5 py-0.5 text-[10px] font-medium text-muted">
                   Paused
                 </span>
               )}

@@ -2,35 +2,50 @@
 
 # SiteKeep — project guide
 
-SaaS for web designers/agencies: keep clients on a monthly maintenance retainer via a
-branded per-client dashboard (page speed, traffic, security) + automated monthly email
-reports. Core loop: agency signs up → adds a client → toggles services → shareable
-white-label dashboard → monthly report → billed $3/dashboard/month.
+Website-monitoring SaaS for freelancers/agencies who resell "we keep your site healthy" to
+their own clients. The headline is one **Keep Score** (0–100) per site — uptime, form
+delivery, performance, SSL/domain, broken links — visualized as a green-week grid + streak.
+Core loop: scan-first onboarding (aha before signup) → Keep Score dashboard → client-ready
+weekly recap email → Solo/Agency plans (14-day card-required trial). The earlier
+per-client service dashboards + white-label public page still exist as secondary detail.
 
 **Every phase must follow this file so styling and patterns don't drift.**
 
-## Design system — sampled from the live site (do not invent new values)
+## Design system — "green means healthy" (dark, disciplined)
 
-Tokens were pulled from the real marketing CSS (sitekeep-landing.webflow.io) and live in
-`src/app/globals.css` under `@theme` (Tailwind v4, CSS-first — there is no
-`tailwind.config.js`). Use these tokens/utilities, not ad-hoc hex or arbitrary values.
+Tokens live in `src/app/globals.css` under `@theme` (Tailwind v4, CSS-first — there is no
+`tailwind.config.js`) with a JS mirror in `src/lib/design-tokens.ts` (for Recharts / the
+green-week grid / email). Use tokens/utilities, never ad-hoc hex. Dark, cool-tinted slate.
 
-- **Brand blue** `#0068ff` (`brand`/`brand-500`), hover `#2759b0` (`brand-hover`/`brand-600`).
-  Scale: `brand-50 #f2f7ff` · `100 #e0edff` · `200 #b2d9ff` · `300 #63a1ff` · `400 #2c80ff`
-  · `500 #0068ff` · `600 #2759b0` · `700 #1e4589`. (NB: the brief's `#4F46E5` indigo was a
-  baseline — the live site is blue, so we use blue.)
-- **Spark accents**: orange `#e87c2e` (`accent-orange`), magenta `#cb52cc` (`accent-magenta`),
-  green `#6cad45` (`accent-green`).
-- **Ink / text**: headings navy `#0e213d` (`ink`), body `#404040` (`body`), muted `#757575`
-  (`muted`), faint `#b8b8b8` (`faint`).
-- **Surfaces**: `surface #fff`, `canvas #fafafa`, `canvas-alt #f7f7f7`, hairline `line #e5e5e5`.
-- **Pastel feature fills**: `fill-blue #f2f7ff`, `fill-pink #fdf0f6`, `fill-green #eefbf3`,
-  `fill-violet #f1eefe`.
-- **Typeface**: **Satoshi** (loaded from Fontshare in `globals.css`), Inter fallback via
-  `next/font`. Headings are `font-bold tracking-tight` navy; hero ~`text-5xl/6xl`.
-- **Radii**: cards `rounded-[var(--radius-card)]` (18px) / `--radius-card-lg` (22px); buttons
-  `rounded-xl`; pills `rounded-full`. **Shadows**: `shadow-soft`, `shadow-soft-md` on hover.
-- **Gradient wash**: `.bg-wash` (blue+magenta radial over `#fafafa`) behind hero/auth/canvas.
+- **keep-green** `#35c46a` (`keep`/`accent-green`) — the ONE signature color: healthy scores,
+  the green-week grid, streaks, success. Deep `#1f8a4c` (`keep-700`). Green must stay
+  meaningful — never decorative.
+- **amber** `#f5a524` (`accent-orange`) — degraded checks, warnings.
+- **red** `#e5484d` (`accent-red`) — **active incidents only**. If red shows, something is
+  genuinely wrong. Never decorative. (`accent-magenta` is a legacy alias → red.)
+- **accent (blue, non-green)** `#4c8dff` (`brand`/`brand-500`), hover `#6ba1ff`
+  (`brand-hover`) — the interactive color: buttons, links, focus ring, selection.
+- **Ink / text (light on dark)**: headings `#e6edf3` (`ink`), body `#c4cdd6` (`body`),
+  muted `#8b98a5` (`muted`), faint `#6b7885` (`faint`).
+- **Surfaces**: `surface #141b22` (cards), `canvas #0b0f14` (page), `canvas-alt #1c2630`
+  (inputs/insets/hover), hairline `line #2a3742`.
+- **Typography**: headings/display = **Clash Display** (`font-display`, Fontshare, used with
+  restraint); body = **Inter** (`font-sans`, `next/font`); numbers = **JetBrains Mono**
+  (`font-mono` or the `.num` utility — tabular; use for scores, uptime %, timestamps so
+  metrics align and feel instrument-like).
+- **Icons**: **Lucide** (`lucide-react`) only. **No emojis anywhere in the UI.**
+- **Charts**: Recharts. Micro-sparklines in site cards; **no pie charts**. One KPI appears in
+  exactly one place per page — never repeat the same stat block twice on a screen.
+- **Signature element**: the **green-week grid** (GitHub-contribution style, one square per
+  week per site). This is the one bold visual — keep everything else quiet.
+- **Radii**: `rounded-[var(--radius-card)]` (16px) / `--radius-card-lg` (20px); buttons
+  `rounded-xl`; pills `rounded-full`. **Shadows**: `shadow-soft`, `shadow-soft-md`.
+- **Focus**: every interactive element shows a keyboard focus ring — primitives have it; for
+  hand-rolled controls add the `focus-ring` utility. **Gradient wash**: `.bg-wash` (green+blue
+  radial over canvas) behind hero/auth.
+- **Copy voice**: plain verbs, sentence case, active voice. Buttons say what happens ("Start
+  monitoring", not "Submit"). Errors say what broke + what to do. Empty states invite the next
+  action. **No exclamation marks** in system copy.
 
 ### Build from the shared UI primitives — don't hand-roll
 

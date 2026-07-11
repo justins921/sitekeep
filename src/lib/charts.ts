@@ -5,10 +5,10 @@
 // Score bands (0–100). We use the app's existing convention — poor = magenta —
 // rather than a raw red, to stay on the brand palette.
 export const BAND = {
-  good: "#6cad45", // 90–100
-  mid: "#e87c2e", // 50–89
+  good: "#35c46a", // 90–100
+  mid: "#f5a524", // 50–89
   bad: "#e5484d", // 0–49 — red on the green/amber/red scale
-  none: "#b8b8b8",
+  none: "#6b7885",
 } as const;
 
 export type Band = keyof typeof BAND;
@@ -45,7 +45,7 @@ export function gaugeSvg(
   opts: { size?: number; label?: string } = {},
 ): string {
   const g = gaugeGeometry(score, opts.size ?? 96, 9);
-  const track = "#eeeeee";
+  const track = "#26303a";
   const value = score == null ? "—" : String(Math.round(score));
   return (
     `<svg width="${g.size}" height="${g.size}" viewBox="0 0 ${g.size} ${g.size}" xmlns="http://www.w3.org/2000/svg">` +
@@ -53,7 +53,7 @@ export function gaugeSvg(
     `<circle cx="${g.cx}" cy="${g.cx}" r="${g.r}" fill="none" stroke="${g.color}" stroke-width="${g.stroke}" ` +
     `stroke-linecap="round" stroke-dasharray="${g.dash.toFixed(2)} ${(g.c - g.dash).toFixed(2)}" ` +
     `transform="rotate(-90 ${g.cx} ${g.cx})"/>` +
-    `<text x="50%" y="52%" text-anchor="middle" dominant-baseline="middle" font-family="Arial,sans-serif" font-size="${Math.round(g.size * 0.28)}" font-weight="700" fill="#0e213d">${value}</text>` +
+    `<text x="50%" y="52%" text-anchor="middle" dominant-baseline="middle" font-family="Arial,sans-serif" font-size="${Math.round(g.size * 0.28)}" font-weight="700" fill="#e6edf3">${value}</text>` +
     `</svg>`
   );
 }
@@ -88,7 +88,7 @@ export function comparisonLineSvg(
   if (current.length < 2) return null;
   const w = opts.width ?? 520;
   const h = opts.height ?? 140;
-  const color = opts.color ?? "#0068ff";
+  const color = opts.color ?? "#4c8dff";
   const all = [...current, ...preceding];
   const min = Math.min(...all);
   const max = Math.max(...all);
@@ -96,7 +96,7 @@ export function comparisonLineSvg(
   const prev = preceding.length >= 2 ? linePath(preceding, w, h, min, max) : "";
   return (
     `<svg width="100%" height="${h}" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">` +
-    (prev ? `<path d="${prev}" fill="none" stroke="#b8b8b8" stroke-width="2" stroke-dasharray="5 4"/>` : "") +
+    (prev ? `<path d="${prev}" fill="none" stroke="#6b7885" stroke-width="2" stroke-dasharray="5 4"/>` : "") +
     `<path d="${cur}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>` +
     `</svg>`
   );
@@ -108,11 +108,11 @@ export const RISK_LEVELS = ["minimal", "low", "medium", "high", "critical"] as c
 export type RiskLevel = (typeof RISK_LEVELS)[number];
 
 export const RISK_META: Record<RiskLevel, { label: string; color: string }> = {
-  minimal: { label: "Minimal", color: "#6cad45" },
-  low: { label: "Low", color: "#8bbf3f" },
-  medium: { label: "Medium", color: "#e87c2e" },
+  minimal: { label: "Minimal", color: "#35c46a" },
+  low: { label: "Low", color: "#5fd98c" },
+  medium: { label: "Medium", color: "#f5a524" },
   high: { label: "High", color: "#e5484d" },
-  critical: { label: "Critical", color: "#c02026" },
+  critical: { label: "Critical", color: "#b0242a" },
 };
 
 export function riskIndex(level: RiskLevel): number {

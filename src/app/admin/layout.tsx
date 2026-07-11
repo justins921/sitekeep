@@ -15,7 +15,7 @@ export default async function AdminLayout({
 
   return (
     <div className="min-h-screen bg-canvas">
-      <header className="border-b border-line bg-white">
+      <header className="border-b border-line bg-surface">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-8 sm:py-4">
           <div className="flex items-center gap-6">
             <Link href="/admin" className="inline-flex items-center gap-2 font-bold text-ink focus-ring">

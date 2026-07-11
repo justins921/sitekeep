@@ -80,7 +80,7 @@ export default async function AdminOverviewPage() {
 
       {/* Recent activity */}
       <div className="grid gap-6 lg:grid-cols-2">
-        <section className="rounded-[var(--radius-card-lg)] border border-line bg-white p-6 shadow-soft">
+        <section className="rounded-[var(--radius-card-lg)] border border-line bg-surface p-6 shadow-soft">
           <h2 className="text-lg font-bold tracking-tight">Recent signups</h2>
           <p className="mt-1 text-sm text-muted">Newest agencies to join.</p>
           <ul className="mt-4 divide-y divide-line">
@@ -104,7 +104,7 @@ export default async function AdminOverviewPage() {
           </ul>
         </section>
 
-        <section className="rounded-[var(--radius-card-lg)] border border-line bg-white p-6 shadow-soft">
+        <section className="rounded-[var(--radius-card-lg)] border border-line bg-surface p-6 shadow-soft">
           <h2 className="text-lg font-bold tracking-tight">Subscription events</h2>
           <p className="mt-1 text-sm text-muted">Latest billing changes.</p>
           <ul className="mt-4 divide-y divide-line">

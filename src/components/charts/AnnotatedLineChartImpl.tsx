@@ -37,7 +37,7 @@ export type AnnotatedLineChartProps = {
 export default function AnnotatedLineChartImpl({
   points,
   annotations,
-  color = "#0068ff",
+  color = "#4c8dff",
   height = 150,
   unit = "",
   digits = 0,
@@ -48,20 +48,20 @@ export default function AnnotatedLineChartImpl({
   return (
     <ResponsiveContainer width="100%" height={height}>
       <RLineChart data={points} margin={{ top: 14, right: 8, bottom: 4, left: -18 }}>
-        <CartesianGrid stroke="#eeeeee" vertical={false} />
+        <CartesianGrid stroke="#26303a" vertical={false} />
         <XAxis
           dataKey="t"
           type="number"
           scale="time"
           domain={["dataMin", "dataMax"]}
           tickFormatter={fmt}
-          tick={{ fontSize: 11, fill: "#646464" }}
+          tick={{ fontSize: 11, fill: "#8b98a5" }}
           tickLine={false}
-          axisLine={{ stroke: "#e5e5e5" }}
+          axisLine={{ stroke: "#2a3742" }}
           minTickGap={28}
         />
         <YAxis
-          tick={{ fontSize: 11, fill: "#646464" }}
+          tick={{ fontSize: 11, fill: "#8b98a5" }}
           tickLine={false}
           axisLine={false}
           width={44}
@@ -70,11 +70,11 @@ export default function AnnotatedLineChartImpl({
         <Tooltip
           labelFormatter={(t) => fmt(Number(t))}
           formatter={(val) => [`${Number(val).toFixed(digits)}${unit}`, "Value"]}
-          contentStyle={{
+          contentStyle={{ background: "#141b22", color: "#e6edf3",
             borderRadius: 12,
-            border: "1px solid #e5e5e5",
+            border: "1px solid #2a3742",
             fontSize: 12,
-            boxShadow: "0 6px 20px rgba(14,33,61,0.08)",
+            boxShadow: "0 6px 20px rgba(0,0,0,0.5)",
           }}
         />
         {annotations.map((a, i) => (
@@ -93,7 +93,7 @@ export default function AnnotatedLineChartImpl({
                     {a.label}
                     {a.description ? ` — ${a.description}` : ""}
                   </title>
-                  <circle cx={cx} cy={cy} r={7} fill="#ffffff" stroke={a.color} strokeWidth={1.5} />
+                  <circle cx={cx} cy={cy} r={7} fill="#141b22" stroke={a.color} strokeWidth={1.5} />
                   <text x={cx} y={cy + 3} textAnchor="middle" fontSize={9} fill={a.color}>
                     {a.icon}
                   </text>

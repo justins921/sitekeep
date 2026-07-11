@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 type Tint = "white" | "blue" | "pink" | "green" | "violet";
 
 const tints: Record<Tint, string> = {
-  white: "bg-white border-line",
+  white: "bg-surface border-line",
   blue: "bg-fill-blue border-brand-100",
   pink: "bg-fill-pink border-pink-100",
   green: "bg-fill-green border-green-100",

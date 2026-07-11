@@ -53,7 +53,7 @@ function AnnotationForm({
   return (
     <form
       action={formAction}
-      className="rounded-[var(--radius-card)] border border-line bg-white p-4"
+      className="rounded-[var(--radius-card)] border border-line bg-surface p-4"
     >
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="text-sm">
@@ -159,7 +159,7 @@ function AnnotationRow({
   }
 
   return (
-    <div className="flex items-start gap-3 rounded-[var(--radius-card)] border border-line bg-white p-3">
+    <div className="flex items-start gap-3 rounded-[var(--radius-card)] border border-line bg-surface p-3">
       <span
         className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold"
         style={{ color: meta.color, backgroundColor: `${meta.color}1a` }}
@@ -194,7 +194,7 @@ function AnnotationRow({
           ⋯
         </button>
         {menuOpen && (
-          <div className="absolute right-0 z-10 mt-1 w-32 overflow-hidden rounded-xl border border-line bg-white shadow-soft-md">
+          <div className="absolute right-0 z-10 mt-1 w-32 overflow-hidden rounded-xl border border-line bg-surface shadow-soft-md">
             <button
               type="button"
               onClick={() => {
