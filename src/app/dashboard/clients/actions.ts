@@ -20,6 +20,7 @@ import { recordUptimeCheck, writeUptimeSnapshot } from "@/lib/uptime";
 import { detectSignificantSwings } from "@/lib/auto-annotations";
 import { resolveMembership } from "@/lib/agency";
 import { detectSitePlatform } from "@/lib/site-platform";
+import { computeAndStoreKeepScore } from "@/lib/keep-score";
 
 export type ClientFormState = { error: string } | null;
 
@@ -364,6 +365,14 @@ export async function refreshMetricsAction(
     }
   } catch {
     // ignore — scoring is derived data, not part of the refresh contract
+  }
+
+  // Keep Score: the headline 0–100 for the site (uptime/form/perf/ssl+domain/
+  // links) + the current-week rollup that feeds the green-week grid + streak.
+  try {
+    await computeAndStoreKeepScore(supabase, clientId, new Date());
+  } catch {
+    // ignore — derived data, never part of the refresh contract
   }
 
   revalidatePath(`/dashboard/clients/${clientId}`);
