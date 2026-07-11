@@ -1,18 +1,20 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { resolveMembership } from "@/lib/agency";
 import { getStripe } from "@/lib/stripe";
 import {
-  countActiveDashboards,
-  createCheckoutUrl,
-  getAgencyCreatedAt,
+  cancelAtPeriodEnd,
+  changePlan,
   getSubscription,
-  paidSeatsFor,
+  startTrialCheckout,
 } from "@/lib/billing";
+import { isBillingInterval, isPlanTier } from "@/lib/plans";
 
 export type BillingActionResult = { url: string } | { error: string };
+export type BillingMutationResult = { ok: true } | { error: string };
 
 function siteUrl() {
   return process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
@@ -31,21 +33,45 @@ async function requireOwnerAgency() {
   return { supabase, agencyId: membership.agency.id, email: user.email ?? undefined };
 }
 
-export async function createCheckoutSession(): Promise<BillingActionResult> {
+/** Start a card-required 14-day trial on the chosen plan + interval. */
+export async function startTrialAction(
+  plan: string,
+  interval: string,
+): Promise<BillingActionResult> {
+  if (!isPlanTier(plan) || !isBillingInterval(interval)) {
+    return { error: "Pick a plan to continue." };
+  }
   const { supabase, agencyId, email } = await requireOwnerAgency();
-  const [active, createdAt] = await Promise.all([
-    countActiveDashboards(supabase, agencyId),
-    getAgencyCreatedAt(supabase, agencyId),
-  ]);
-  const quantity = Math.max(paidSeatsFor(active, createdAt), 1);
-  return createCheckoutUrl(supabase, agencyId, email, { quantity });
+  return startTrialCheckout(supabase, agencyId, email, { plan, interval });
+}
+
+/** Switch to a different plan / interval on an active subscription. */
+export async function changePlanAction(
+  plan: string,
+  interval: string,
+): Promise<BillingMutationResult> {
+  if (!isPlanTier(plan) || !isBillingInterval(interval)) {
+    return { error: "Pick a plan to continue." };
+  }
+  const { supabase, agencyId } = await requireOwnerAgency();
+  const res = await changePlan(supabase, agencyId, plan, interval);
+  if ("ok" in res) revalidatePath("/dashboard/billing");
+  return res;
+}
+
+/** Schedule cancellation at the end of the current paid period. */
+export async function cancelSubscriptionAction(): Promise<BillingMutationResult> {
+  const { supabase, agencyId } = await requireOwnerAgency();
+  const res = await cancelAtPeriodEnd(supabase, agencyId);
+  if ("ok" in res) revalidatePath("/dashboard/billing");
+  return res;
 }
 
 export async function createPortalSession(): Promise<BillingActionResult> {
   const { supabase, agencyId } = await requireOwnerAgency();
   const sub = await getSubscription(supabase, agencyId);
   if (!sub?.stripe_customer_id) {
-    return { error: "Subscribe first, then you can manage billing." };
+    return { error: "Start a plan first, then you can manage billing." };
   }
 
   const stripe = getStripe();

@@ -98,12 +98,11 @@ export default async function ClientDashboardTab({
       {showConfirm && (
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-card)] border border-brand-100 bg-brand-50 px-5 py-4">
           <p className="text-sm text-ink">
-            Activating this dashboard adds <strong>$3/month</strong> to your
-            subscription, effective immediately.
+            This site is <strong>paused</strong>. Turn it on — it&apos;s included in your plan.
           </p>
           <form action={confirmActivateAction.bind(null, id)}>
             <Button type="submit" size="sm">
-              Confirm &amp; activate
+              Turn on monitoring
             </Button>
           </form>
         </div>
@@ -112,12 +111,11 @@ export default async function ClientDashboardTab({
       {showGate && (
         <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-card)] border border-brand-100 bg-brand-50 px-5 py-4">
           <p className="text-sm text-ink">
-            This dashboard is <strong>paused</strong> — your first dashboard is
-            free for 30 days; activating this one is $3/mo.
+            This site is <strong>paused</strong> — start a 14-day trial to keep it monitored.
           </p>
           <form action={startClientCheckoutAction.bind(null, id)}>
             <Button type="submit" size="sm">
-              Subscribe to activate
+              Start trial to activate
             </Button>
           </form>
         </div>

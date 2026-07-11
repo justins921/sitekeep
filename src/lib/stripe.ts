@@ -1,5 +1,6 @@
 import "server-only";
 import Stripe from "stripe";
+import type { BillingInterval, PlanTier } from "./plans";
 
 /**
  * Server-only Stripe client. STRIPE_SECRET_KEY must be a secret (test:
@@ -16,9 +17,37 @@ export function getStripe(): Stripe {
   return cached;
 }
 
-export const PRICE_DOLLARS = 3; // $3 per dashboard / month
+// One Stripe price per (plan, interval). Configure via env, e.g.
+//   STRIPE_PRICE_SOLO_MONTH=price_… STRIPE_PRICE_AGENCY_YEAR=price_…
+const PRICE_ENV: Record<PlanTier, Record<BillingInterval, string>> = {
+  solo: { month: "STRIPE_PRICE_SOLO_MONTH", year: "STRIPE_PRICE_SOLO_YEAR" },
+  agency: { month: "STRIPE_PRICE_AGENCY_MONTH", year: "STRIPE_PRICE_AGENCY_YEAR" },
+};
 
-/** The configured recurring price id, or null when it still needs bootstrapping. */
-export function getPriceId(): string | null {
-  return process.env.NEXT_PUBLIC_STRIPE_PRICE_ID || null;
+/** The Stripe price id for a plan + interval, or null when not configured. */
+export function getPriceId(plan: PlanTier, interval: BillingInterval): string | null {
+  return process.env[PRICE_ENV[plan][interval]] || null;
+}
+
+/** Reverse-map a Stripe price id back to its plan + interval (webhook sync). */
+export function planForPriceId(
+  priceId: string | null | undefined,
+): { plan: PlanTier; interval: BillingInterval } | null {
+  if (!priceId) return null;
+  for (const plan of ["solo", "agency"] as PlanTier[]) {
+    for (const interval of ["month", "year"] as BillingInterval[]) {
+      if (process.env[PRICE_ENV[plan][interval]] === priceId) return { plan, interval };
+    }
+  }
+  return null;
+}
+
+/** True when at least one plan price is configured (billing is live). */
+export function billingConfigured(): boolean {
+  return Boolean(
+    getPriceId("solo", "month") ||
+      getPriceId("solo", "year") ||
+      getPriceId("agency", "month") ||
+      getPriceId("agency", "year"),
+  );
 }

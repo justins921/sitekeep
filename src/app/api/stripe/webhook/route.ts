@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import type Stripe from "stripe";
-import { getStripe } from "@/lib/stripe";
+import { getStripe, planForPriceId } from "@/lib/stripe";
+import { isPlanTier, isBillingInterval } from "@/lib/plans";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 // Needs the Node runtime for raw-body access + signature verification.
@@ -8,7 +9,10 @@ export const runtime = "nodejs";
 
 type SubUpdate = {
   status?: string;
-  quantity?: number;
+  plan?: string | null;
+  billing_interval?: string | null;
+  trial_end?: string | null;
+  cancel_at_period_end?: boolean;
   stripe_customer_id?: string;
   stripe_subscription_id?: string;
   current_period_end?: string | null;
@@ -23,10 +27,26 @@ function periodEnd(sub: Stripe.Subscription): string | null {
   return unix ? new Date(unix * 1000).toISOString() : null;
 }
 
+/** Resolve plan + interval from the subscription metadata, then the price id. */
+function planInterval(sub: Stripe.Subscription): { plan: string | null; interval: string | null } {
+  const metaPlan = sub.metadata?.plan;
+  const metaInterval = sub.metadata?.billing_interval;
+  if (isPlanTier(metaPlan) && isBillingInterval(metaInterval)) {
+    return { plan: metaPlan, interval: metaInterval };
+  }
+  const priceId = sub.items?.data?.[0]?.price?.id;
+  const mapped = planForPriceId(priceId);
+  return { plan: mapped?.plan ?? metaPlan ?? null, interval: mapped?.interval ?? metaInterval ?? null };
+}
+
 function subFields(sub: Stripe.Subscription, status?: string): SubUpdate {
+  const { plan, interval } = planInterval(sub);
   return {
     status: status ?? sub.status,
-    quantity: sub.items?.data?.[0]?.quantity ?? 1,
+    plan,
+    billing_interval: interval,
+    trial_end: sub.trial_end ? new Date(sub.trial_end * 1000).toISOString() : null,
+    cancel_at_period_end: Boolean(sub.cancel_at_period_end),
     stripe_subscription_id: sub.id,
     stripe_customer_id:
       typeof sub.customer === "string" ? sub.customer : sub.customer.id,
@@ -99,7 +119,6 @@ export async function POST(req: NextRequest) {
         const sub = event.data.object as Stripe.Subscription;
         const agencyId = sub.metadata?.agency_id;
         const fields = subFields(sub, "canceled");
-        fields.quantity = 0;
         if (agencyId) await updateByAgency(agencyId, fields);
         else await updateByCustomer(fields.stripe_customer_id!, fields);
         break;

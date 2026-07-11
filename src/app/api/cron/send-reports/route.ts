@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { runDueReports } from "@/lib/report-runner";
 import { runWeeklyRecaps } from "@/lib/keep-score/recap-runner";
-import { reconcileTrials } from "@/lib/billing";
+import { reconcileBilling } from "@/lib/billing";
 
 export const runtime = "nodejs";
 // Belt-and-suspenders: never cache this route.
@@ -26,8 +26,8 @@ export async function GET(req: NextRequest) {
 
   const admin = createAdminClient();
   const now = new Date();
-  // Flip first dashboards from free→paid at day 30 and keep quantities in step.
-  const billing = await reconcileTrials(admin, now);
+  // Send day-12 trial reminders and pause sites for ended/over-cap plans.
+  const billing = await reconcileBilling(admin, now);
   const reports = await runDueReports(admin, now);
   // Per-account weekly Keep Score recap (fires on Mondays; no-ops otherwise).
   const recaps = await runWeeklyRecaps(admin, now);

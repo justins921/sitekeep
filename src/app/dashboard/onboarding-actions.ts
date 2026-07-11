@@ -5,11 +5,7 @@ import { revalidatePath } from "next/cache";
 import { createClient as createSupabase } from "@/lib/supabase/server";
 import { normalizeUrl, slugify } from "@/lib/utils";
 import { resolveMembership } from "@/lib/agency";
-import {
-  countActiveDashboards,
-  freeAllowance,
-  getAgencyCreatedAt,
-} from "@/lib/billing";
+import { canAddSite, countActiveDashboards, getSubscription } from "@/lib/billing";
 import { recordUptimeCheck, writeUptimeSnapshot } from "@/lib/uptime";
 import { computeAndStoreKeepScore } from "@/lib/keep-score";
 
@@ -83,11 +79,14 @@ export async function importPendingSite(): Promise<ImportPendingResult> {
     return { imported: true, clientId: existing.id as string };
   }
 
-  const [activeCount, createdAt] = await Promise.all([
+  const [activeCount, sub] = await Promise.all([
     countActiveDashboards(supabase, agency_id),
-    getAgencyCreatedAt(supabase, agency_id),
+    getSubscription(supabase, agency_id),
   ]);
-  const is_active = activeCount < freeAllowance(createdAt);
+  // The scanned site imports as a live preview so the Keep Score appears at
+  // once; reconcile pauses it after the start grace if no trial is begun.
+  // Any further import respects the plan's site cap.
+  const is_active = activeCount === 0 || canAddSite(sub, activeCount);
 
   const base = slugify(companyNameFromUrl(url)) || "site";
   let newId: string | null = null;

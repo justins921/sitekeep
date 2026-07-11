@@ -1,14 +1,28 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { getStripe, getPriceId } from "./stripe";
+import {
+  PLANS,
+  TRIAL_DAYS,
+  TRIAL_REMINDER_DAY,
+  siteCap,
+  smallestPlanFor,
+  type BillingInterval,
+  type PlanTier,
+} from "./plans";
+import { renderTrialReminderEmail } from "./billing-email";
+import { sendEmail } from "./email";
 
 /**
- * Each agency's FIRST dashboard is free for its first 30 days (tracked here in
- * the app, NOT as a Stripe trial). After that it becomes a paid seat like any
- * other. Every dashboard beyond the free one is a paid $3/mo seat billed
- * immediately — so Stripe only ever sees "paid seats", charged right away.
+ * Billing model v2: two flat plans (Solo ≤3 sites, Agency ≤15 + white-label),
+ * each with a card-required 14-day Stripe trial. There is no per-seat charge and
+ * no permanent free tier — a brand-new agency gets a short app-side grace to
+ * start its trial, after which unmonitored dashboards pause until a plan is live.
  */
-export const TRIAL_DAYS = 30;
+
+// App-side grace (days) for a just-signed-up agency to start its trial before
+// its imported preview site pauses. Matches the trial length in spirit.
+const START_GRACE_DAYS = TRIAL_DAYS;
 
 function siteUrl() {
   return process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
@@ -19,32 +33,26 @@ export type SubscriptionRow = {
   stripe_customer_id: string | null;
   stripe_subscription_id: string | null;
   status: string;
-  quantity: number;
+  plan: PlanTier | null;
+  billing_interval: BillingInterval | null;
+  trial_end: string | null;
+  cancel_at_period_end: boolean;
   current_period_end: string | null;
 };
 
-/** Statuses that mean the agency currently has a paid subscription. */
+/** Statuses that mean the agency currently has access (paid or in trial). */
 export function isEntitled(status: string | null | undefined): boolean {
   return status === "active" || status === "trialing";
 }
 
-/** 1 free dashboard while inside the 30-day window, otherwise 0. */
-export function freeAllowance(
-  agencyCreatedAt: string | null | undefined,
-  now: Date = new Date(),
-): number {
-  if (!agencyCreatedAt) return 0;
-  const end = new Date(agencyCreatedAt).getTime() + TRIAL_DAYS * 86_400_000;
-  return now.getTime() < end ? 1 : 0;
+/** How many active sites this agency may run right now (0 when not entitled). */
+export function currentSiteCap(sub: SubscriptionRow | null): number {
+  return sub && isEntitled(sub.status) ? siteCap(sub.plan) : 0;
 }
 
-/** How many dashboards must be paid for = active minus the free allowance. */
-export function paidSeatsFor(
-  activeCount: number,
-  agencyCreatedAt: string | null | undefined,
-  now?: Date,
-): number {
-  return Math.max(0, activeCount - freeAllowance(agencyCreatedAt, now));
+/** Can the agency turn on one more site? */
+export function canAddSite(sub: SubscriptionRow | null, activeCount: number): boolean {
+  return isEntitled(sub?.status) && activeCount < currentSiteCap(sub);
 }
 
 export async function getSubscription(
@@ -54,7 +62,7 @@ export async function getSubscription(
   const { data } = await supabase
     .from("subscriptions")
     .select(
-      "agency_id, stripe_customer_id, stripe_subscription_id, status, quantity, current_period_end",
+      "agency_id, stripe_customer_id, stripe_subscription_id, status, plan, billing_interval, trial_end, cancel_at_period_end, current_period_end",
     )
     .eq("agency_id", agencyId)
     .maybeSingle();
@@ -86,57 +94,19 @@ export async function countActiveDashboards(
 }
 
 /**
- * Reconcile the Stripe subscription quantity with the number of PAID seats
- * (active dashboards minus the free one). Adds/removes bill immediately; if the
- * agency has no paid seats left, the subscription is cancelled. No-op without a
- * subscription. Stripe API only — safe to call from a user action.
+ * Start a card-required 14-day trial on a plan + interval via Stripe Checkout.
+ * When `pendingClientId` is set, the webhook activates that client once the
+ * trial starts, and Checkout returns to it. No charge until the trial ends.
  */
-export async function syncSubscriptionQuantity(
-  supabase: SupabaseClient,
-  agencyId: string,
-): Promise<void> {
-  const sub = await getSubscription(supabase, agencyId);
-  if (!sub?.stripe_subscription_id) return;
-
-  const [createdAt, activeCount] = await Promise.all([
-    getAgencyCreatedAt(supabase, agencyId),
-    countActiveDashboards(supabase, agencyId),
-  ]);
-  const seats = paidSeatsFor(activeCount, createdAt);
-  const stripe = getStripe();
-
-  if (seats <= 0) {
-    if (isEntitled(sub.status)) {
-      await stripe.subscriptions.cancel(sub.stripe_subscription_id);
-    }
-    return;
-  }
-
-  const subscription = await stripe.subscriptions.retrieve(sub.stripe_subscription_id);
-  const item = subscription.items.data[0];
-  if (!item || item.quantity === seats) return;
-
-  await stripe.subscriptions.update(sub.stripe_subscription_id, {
-    items: [{ id: item.id, quantity: seats }],
-    // Bill the change immediately (each added dashboard is charged right away).
-    proration_behavior: "always_invoice",
-  });
-}
-
-/**
- * Checkout for `quantity` PAID seats, charged immediately (no Stripe trial —
- * the free month is handled app-side). When `pendingClientId` is set, the
- * webhook activates that client on payment and Checkout returns to it.
- */
-export async function createCheckoutUrl(
+export async function startTrialCheckout(
   supabase: SupabaseClient,
   agencyId: string,
   email: string | undefined,
-  opts: { quantity: number; pendingClientId?: string },
+  opts: { plan: PlanTier; interval: BillingInterval; pendingClientId?: string },
 ): Promise<{ url: string } | { error: string }> {
-  const priceId = getPriceId();
+  const priceId = getPriceId(opts.plan, opts.interval);
   if (!priceId) {
-    return { error: "Billing isn't configured yet. Add a price ID to continue." };
+    return { error: "That plan isn't configured yet. Add its Stripe price id to continue." };
   }
 
   const sub = await getSubscription(supabase, agencyId);
@@ -152,19 +122,22 @@ export async function createCheckoutUrl(
   try {
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
-      line_items: [{ price: priceId, quantity: Math.max(opts.quantity, 1) }],
+      line_items: [{ price: priceId, quantity: 1 }],
       client_reference_id: agencyId,
       ...(sub?.stripe_customer_id
         ? { customer: sub.stripe_customer_id }
         : { customer_email: email }),
       subscription_data: {
+        trial_period_days: TRIAL_DAYS,
         metadata: {
           agency_id: agencyId,
-          ...(opts.pendingClientId
-            ? { pending_client_id: opts.pendingClientId }
-            : {}),
+          plan: opts.plan,
+          billing_interval: opts.interval,
+          ...(opts.pendingClientId ? { pending_client_id: opts.pendingClientId } : {}),
         },
       },
+      // Card required up front even though the trial doesn't charge yet.
+      payment_method_collection: "always",
       allow_promotion_codes: true,
       success_url: `${siteUrl()}${successPath}`,
       cancel_url: `${siteUrl()}${cancelPath}`,
@@ -176,49 +149,179 @@ export async function createCheckoutUrl(
   }
 }
 
+/** Switch an active subscription to a different plan (upgrade/downgrade). */
+export async function changePlan(
+  supabase: SupabaseClient,
+  agencyId: string,
+  plan: PlanTier,
+  interval: BillingInterval,
+): Promise<{ ok: true } | { error: string }> {
+  const sub = await getSubscription(supabase, agencyId);
+  if (!sub?.stripe_subscription_id) return { error: "No active subscription to change." };
+  const priceId = getPriceId(plan, interval);
+  if (!priceId) return { error: "That plan isn't configured yet." };
+
+  const stripe = getStripe();
+  try {
+    const subscription = await stripe.subscriptions.retrieve(sub.stripe_subscription_id);
+    const item = subscription.items.data[0];
+    await stripe.subscriptions.update(sub.stripe_subscription_id, {
+      items: [{ id: item.id, price: priceId }],
+      proration_behavior: "always_invoice",
+      metadata: { ...subscription.metadata, plan, billing_interval: interval },
+    });
+    return { ok: true };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Could not change plan." };
+  }
+}
+
+/** Cancel at period end (keeps access until the paid period ends). */
+export async function cancelAtPeriodEnd(
+  supabase: SupabaseClient,
+  agencyId: string,
+): Promise<{ ok: true } | { error: string }> {
+  const sub = await getSubscription(supabase, agencyId);
+  if (!sub?.stripe_subscription_id) return { error: "No active subscription to cancel." };
+  try {
+    await getStripe().subscriptions.update(sub.stripe_subscription_id, {
+      cancel_at_period_end: true,
+    });
+    return { ok: true };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Could not schedule cancellation." };
+  }
+}
+
+/** Days remaining in a trial (null when not trialing). */
+function trialDaysLeft(sub: SubscriptionRow, now: Date): number | null {
+  if (sub.status !== "trialing" || !sub.trial_end) return null;
+  return Math.ceil((new Date(sub.trial_end).getTime() - now.getTime()) / 86_400_000);
+}
+
+/** Pause the newest active sites down to `keep` (downgrade / cap enforcement). */
+async function pauseNewestOver(
+  supabase: SupabaseClient,
+  agencyId: string,
+  keep: number,
+): Promise<number> {
+  const { data: active } = await supabase
+    .from("clients")
+    .select("id, created_at")
+    .eq("agency_id", agencyId)
+    .eq("is_active", true)
+    .order("created_at", { ascending: true });
+  const rows = active ?? [];
+  if (rows.length <= keep) return 0;
+  const toPause = rows.slice(keep).map((r) => r.id as string);
+  await supabase.from("clients").update({ is_active: false }).in("id", toPause);
+  return toPause.length;
+}
+
 /**
- * Daily reconciliation (cron): keep subscription quantities in step (this is
- * what flips an agency's first dashboard from free to paid once its 30-day
- * window ends), and pause dashboards for agencies that are past the free
- * window with no subscription. Uses a service-role client.
+ * Daily reconciliation (cron, service role):
+ *  - send the day-12 trial reminder (once) when a trial is ~2 days from ending,
+ *  - pause every active site for agencies whose subscription ended (canceled /
+ *    unpaid) or that never started a trial past the grace window,
+ *  - on a downgrade, pause the newest sites over the new plan's cap.
  */
-export async function reconcileTrials(
+export async function reconcileBilling(
   supabase: SupabaseClient,
   now: Date = new Date(),
-): Promise<{ synced: number; paused: number }> {
-  let synced = 0;
+): Promise<{ reminded: number; paused: number }> {
+  let reminded = 0;
   let paused = 0;
 
   const { data: subs } = await supabase
     .from("subscriptions")
-    .select("agency_id, status, stripe_subscription_id")
-    .in("status", ["active", "trialing"]);
-  for (const s of subs ?? []) {
-    if (s.stripe_subscription_id) {
-      await syncSubscriptionQuantity(supabase, s.agency_id as string);
-      synced++;
+    .select(
+      "agency_id, stripe_customer_id, stripe_subscription_id, status, plan, billing_interval, trial_end, cancel_at_period_end, current_period_end, trial_reminder_sent_at",
+    );
+
+  for (const raw of subs ?? []) {
+    const sub = raw as SubscriptionRow & { trial_reminder_sent_at: string | null };
+    const agencyId = sub.agency_id;
+
+    // Day-12 trial reminder (trial ends in <= TRIAL_DAYS - TRIAL_REMINDER_DAY days).
+    const left = trialDaysLeft(sub, now);
+    if (
+      left != null &&
+      left <= TRIAL_DAYS - TRIAL_REMINDER_DAY &&
+      left >= 0 &&
+      !sub.trial_reminder_sent_at
+    ) {
+      const sent = await sendTrialReminder(supabase, sub, left, now);
+      if (sent) {
+        await supabase
+          .from("subscriptions")
+          .update({ trial_reminder_sent_at: now.toISOString() })
+          .eq("agency_id", agencyId);
+        reminded++;
+      }
+    }
+
+    if (isEntitled(sub.status)) {
+      // Entitled: enforce the plan's site cap (catches downgrades). Skip until
+      // the plan has synced from Stripe, so we never pause a paid agency blindly.
+      if (sub.plan) paused += await pauseNewestOver(supabase, agencyId, siteCap(sub.plan));
+    } else if (sub.status === "canceled" || sub.status === "unpaid") {
+      // Subscription ended — pause everything.
+      paused += await pauseNewestOver(supabase, agencyId, 0);
     }
   }
 
+  // Agencies that never subscribed: pause their preview site after the grace.
   const { data: agencies } = await supabase.from("agencies").select("id, created_at");
   for (const a of agencies ?? []) {
-    if (freeAllowance(a.created_at as string, now) > 0) continue; // still free
     const sub = await getSubscription(supabase, a.id as string);
-    if (isEntitled(sub?.status)) continue; // covered by a subscription
-    const { count } = await supabase
-      .from("clients")
-      .select("id", { count: "exact", head: true })
-      .eq("agency_id", a.id)
-      .eq("is_active", true);
-    if ((count ?? 0) > 0) {
-      await supabase
-        .from("clients")
-        .update({ is_active: false })
-        .eq("agency_id", a.id)
-        .eq("is_active", true);
-      paused += count ?? 0;
-    }
+    if (isEntitled(sub?.status)) continue;
+    if (sub?.status === "canceled" || sub?.status === "unpaid") continue; // handled above
+    const age = (now.getTime() - new Date(a.created_at as string).getTime()) / 86_400_000;
+    if (age <= START_GRACE_DAYS) continue; // still in the start grace
+    paused += await pauseNewestOver(supabase, a.id as string, 0);
   }
 
-  return { synced, paused };
+  return { reminded, paused };
 }
+
+/** Send the trial-ending reminder to the agency owner. Returns false on skip. */
+async function sendTrialReminder(
+  supabase: SupabaseClient,
+  sub: SubscriptionRow,
+  daysLeft: number,
+  now: Date,
+): Promise<boolean> {
+  const { data: agency } = await supabase
+    .from("agencies")
+    .select("name, alert_email, owner_id")
+    .eq("id", sub.agency_id)
+    .single();
+  if (!agency) return false;
+
+  let recipient = agency.alert_email as string | null;
+  if (!recipient) {
+    try {
+      const { data } = await supabase.auth.admin.getUserById(agency.owner_id as string);
+      recipient = data.user?.email ?? null;
+    } catch {
+      recipient = null;
+    }
+  }
+  if (!recipient) return false;
+
+  const plan = sub.plan ? PLANS[sub.plan] : PLANS.solo;
+  const { subject, html } = renderTrialReminderEmail({
+    agencyName: agency.name as string,
+    plan,
+    interval: sub.billing_interval ?? "year",
+    daysLeft: Math.max(0, daysLeft),
+    trialEnd: sub.trial_end,
+    siteUrl: siteUrl(),
+    now,
+  });
+  const res = await sendEmail({ to: recipient, subject, html });
+  return res.ok;
+}
+
+// Re-exports so existing importers keep working through the model change.
+export { TRIAL_DAYS, siteCap, smallestPlanFor };

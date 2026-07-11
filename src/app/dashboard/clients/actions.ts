@@ -7,15 +7,13 @@ import { normalizeUrl, slugify } from "@/lib/utils";
 import { SERVICE_TYPES, type ServiceType } from "@/lib/services";
 import { runService } from "@/lib/metrics";
 import {
+  canAddSite,
   countActiveDashboards,
-  createCheckoutUrl,
-  freeAllowance,
-  getAgencyCreatedAt,
+  currentSiteCap,
   getSubscription,
   isEntitled,
-  paidSeatsFor,
-  syncSubscriptionQuantity,
 } from "@/lib/billing";
+import { PLANS } from "@/lib/plans";
 import { recordUptimeCheck, writeUptimeSnapshot } from "@/lib/uptime";
 import { detectSignificantSwings } from "@/lib/auto-annotations";
 import { resolveMembership } from "@/lib/agency";
@@ -84,19 +82,17 @@ export async function createClientAction(
   if ("error" in parsed) return { error: parsed.error };
 
   const supabase = await createSupabase();
-  const { agencyId: agency_id, email } = await requireAgency(supabase);
+  const { agencyId: agency_id } = await requireAgency(supabase);
 
-  // A new dashboard activates free only if it fits in the 30-day free allowance
-  // (the first dashboard). Otherwise it's a paid seat — created paused, then
-  // either confirmed (subscribers) or paid for via Checkout.
-  const [activeCount, sub, createdAt] = await Promise.all([
+  // A site goes live only if the agency is on a plan (trial or paid) and still
+  // under its plan's site cap. Otherwise it's created paused and the owner is
+  // sent to billing to start a trial (no plan) or upgrade (over cap).
+  const [activeCount, sub] = await Promise.all([
     countActiveDashboards(supabase, agency_id),
     getSubscription(supabase, agency_id),
-    getAgencyCreatedAt(supabase, agency_id),
   ]);
   const entitled = isEntitled(sub?.status);
-  const canFree = activeCount < freeAllowance(createdAt);
-  const is_active = canFree;
+  const is_active = canAddSite(sub, activeCount);
 
   const base = slugify(parsed.values.company_name) || "client";
   let newId: string | null = null;
@@ -125,20 +121,13 @@ export async function createClientAction(
   revalidatePath("/dashboard");
 
   if (is_active) {
-    redirect(`/dashboard/clients/${newId}`); // free dashboard, live now
+    redirect(`/dashboard/clients/${newId}`); // within plan cap, live now
   }
-
-  // Paid seat needed. Subscribers confirm the extra $3/mo on the client page;
-  // everyone else goes to Checkout (which activates the client on payment).
-  if (entitled) {
-    redirect(`/dashboard/clients/${newId}?confirm=1`);
+  // Paused: no plan yet → start a trial; on a plan but over cap → upgrade.
+  if (!entitled) {
+    redirect(`/dashboard/billing?start=1&pending=${newId}`);
   }
-  const checkout = await createCheckoutUrl(supabase, agency_id, email, {
-    quantity: paidSeatsFor(activeCount + 1, createdAt),
-    pendingClientId: newId,
-  });
-  if ("url" in checkout) redirect(checkout.url);
-  redirect(`/dashboard/clients/${newId}?gated=1`);
+  redirect(`/dashboard/billing?upgrade=1&pending=${newId}`);
 }
 
 export async function updateClientAction(
@@ -154,10 +143,9 @@ export async function updateClientAction(
   const supabase = await createSupabase();
   const { agencyId } = await requireAgency(supabase);
 
-  // Gate: activating a paid seat requires a subscription (unless it fits in the
-  // 30-day free allowance).
+  // Gate: turning a site on requires a live plan with room under its site cap.
   if (is_active) {
-    const [{ count: otherActive }, sub, createdAt] = await Promise.all([
+    const [{ count: otherActive }, sub] = await Promise.all([
       supabase
         .from("clients")
         .select("id", { count: "exact", head: true })
@@ -165,13 +153,14 @@ export async function updateClientAction(
         .eq("is_active", true)
         .neq("id", clientId),
       getSubscription(supabase, agencyId),
-      getAgencyCreatedAt(supabase, agencyId),
     ]);
-    const fitsFree = (otherActive ?? 0) + 1 <= freeAllowance(createdAt);
-    if (!fitsFree && !isEntitled(sub?.status)) {
+    if (!isEntitled(sub?.status)) {
+      return { error: "Start a plan from billing to turn this site on." };
+    }
+    if ((otherActive ?? 0) + 1 > currentSiteCap(sub)) {
+      const planName = sub?.plan ? PLANS[sub.plan].name : "your";
       return {
-        error:
-          "Activating this dashboard is $3/mo. Subscribe from the client page to turn it on.",
+        error: `That's over your ${planName} plan's site limit (${currentSiteCap(sub)}). Upgrade from billing to add more.`,
       };
     }
   }
@@ -184,27 +173,36 @@ export async function updateClientAction(
 
   if (error) return { error: error.message };
 
-  await syncSubscriptionQuantity(supabase, agencyId);
   revalidatePath("/dashboard");
   revalidatePath(`/dashboard/clients/${clientId}`);
   redirect(`/dashboard/clients/${clientId}`);
 }
 
 /**
- * Confirm the extra $3/mo and activate a paused client for an already-subscribed
- * agency. Activating adds a paid seat (billed immediately via
- * syncSubscriptionQuantity).
+ * Activate a paused client. Allowed when the agency is on a plan with room under
+ * its site cap (flat plans — no per-seat charge). Over cap → sends to billing.
  */
 export async function confirmActivateAction(clientId: string): Promise<void> {
   const supabase = await createSupabase();
   const { agencyId } = await requireAgency(supabase);
 
-  const { error } = await supabase
+  const [activeCount, sub] = await Promise.all([
+    countActiveDashboards(supabase, agencyId),
+    getSubscription(supabase, agencyId),
+  ]);
+  if (!canAddSite(sub, activeCount)) {
+    redirect(
+      isEntitled(sub?.status)
+        ? `/dashboard/billing?upgrade=1&pending=${clientId}`
+        : `/dashboard/billing?start=1&pending=${clientId}`,
+    );
+  }
+
+  await supabase
     .from("clients")
     .update({ is_active: true })
     .eq("id", clientId)
     .eq("agency_id", agencyId);
-  if (!error) await syncSubscriptionQuantity(supabase, agencyId);
 
   revalidatePath("/dashboard");
   revalidatePath(`/dashboard/clients/${clientId}`);
@@ -212,32 +210,19 @@ export async function confirmActivateAction(clientId: string): Promise<void> {
 }
 
 /**
- * Start Checkout to activate a specific paused client (used by the "paused"
- * recovery prompt when a prior Checkout was cancelled). The webhook activates
- * the client on success.
+ * Start a trial to unlock a specific paused client (the "paused" recovery
+ * prompt). Routes to billing where the owner picks a plan; the pending client
+ * activates once the trial starts.
  */
 export async function startClientCheckoutAction(clientId: string): Promise<void> {
-  const supabase = await createSupabase();
-  const { agencyId, email } = await requireAgency(supabase);
-  const [activeCount, createdAt] = await Promise.all([
-    countActiveDashboards(supabase, agencyId),
-    getAgencyCreatedAt(supabase, agencyId),
-  ]);
-  const checkout = await createCheckoutUrl(supabase, agencyId, email, {
-    quantity: paidSeatsFor(activeCount + 1, createdAt),
-    pendingClientId: clientId,
-  });
-  if ("url" in checkout) redirect(checkout.url);
-  redirect(`/dashboard/clients/${clientId}?gated=1`);
+  redirect(`/dashboard/billing?start=1&pending=${clientId}`);
 }
 
 export async function deleteClientAction(clientId: string): Promise<void> {
   const supabase = await createSupabase();
-  const { agencyId } = await requireAgency(supabase);
+  await requireAgency(supabase);
   // RLS ensures only the owner can delete; cascades remove services/metrics.
   await supabase.from("clients").delete().eq("id", clientId);
-  // Active-dashboard count may have dropped — keep Stripe quantity in step.
-  await syncSubscriptionQuantity(supabase, agencyId);
   revalidatePath("/dashboard");
   redirect("/dashboard");
 }
