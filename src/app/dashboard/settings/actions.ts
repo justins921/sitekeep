@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { resolveMembership } from "@/lib/agency";
 import { normalizeHex } from "@/lib/color";
+import { sendRecapForAgency } from "@/lib/keep-score/recap-runner";
 
 export type BrandingState = { error: string } | { ok: true } | null;
 
@@ -77,4 +78,48 @@ export async function updateBrandingAction(
 
   revalidatePath("/dashboard/settings");
   return { ok: true };
+}
+
+/** Toggle the Monday weekly Keep Score recap for the agency. */
+export async function setWeeklyRecapAction(enabled: boolean): Promise<void> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+  const membership = await resolveMembership(supabase, user.id);
+  if (!membership) redirect("/join");
+
+  await supabase
+    .from("agencies")
+    .update({ weekly_recap_enabled: enabled })
+    .eq("id", membership.agency.id);
+  revalidatePath("/dashboard/settings");
+}
+
+export type TestRecapState = { ok: string } | { error: string };
+
+/** Send a one-off recap to the agency contact (or the owner) right now. */
+export async function sendTestRecapAction(): Promise<TestRecapState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+  const membership = await resolveMembership(supabase, user.id);
+  if (!membership) redirect("/join");
+  const agency = membership.agency;
+
+  const recipient = agency.alert_email ?? user.email;
+  if (!recipient) return { error: "Add a contact email above first, then send a test." };
+
+  const res = await sendRecapForAgency(supabase, agency.id, recipient, new Date());
+  if (res.empty) {
+    return { error: "No active sites yet — add a site to preview the recap." };
+  }
+  if (!res.ok) return { error: res.error ?? "Could not send the test recap." };
+  if (res.skipped) {
+    return { ok: `Recap rendered for ${recipient} (email sending isn't configured in this environment).` };
+  }
+  return { ok: `Test recap sent to ${recipient}.` };
 }

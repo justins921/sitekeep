@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { runDueReports } from "@/lib/report-runner";
+import { runWeeklyRecaps } from "@/lib/keep-score/recap-runner";
 import { reconcileTrials } from "@/lib/billing";
 
 export const runtime = "nodejs";
@@ -28,5 +29,7 @@ export async function GET(req: NextRequest) {
   // Flip first dashboards from free→paid at day 30 and keep quantities in step.
   const billing = await reconcileTrials(admin, now);
   const reports = await runDueReports(admin, now);
-  return NextResponse.json({ billing, reports });
+  // Per-account weekly Keep Score recap (fires on Mondays; no-ops otherwise).
+  const recaps = await runWeeklyRecaps(admin, now);
+  return NextResponse.json({ billing, reports, recaps });
 }

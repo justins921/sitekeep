@@ -9,6 +9,7 @@ export type Agency = {
   logo_url: string | null;
   brand_color: string;
   alert_email: string | null;
+  weekly_recap_enabled: boolean;
   created_at: string;
 };
 

@@ -1,5 +1,6 @@
 import { requireAgency } from "@/lib/agency";
 import { SettingsForm } from "./SettingsForm";
+import { RecapSettings } from "./RecapSettings";
 
 export default async function SettingsPage() {
   const { agency, userEmail } = await requireAgency();
@@ -22,6 +23,10 @@ export default async function SettingsPage() {
             alert_email: agency.alert_email,
           }}
         />
+      </div>
+
+      <div className="mt-8">
+        <RecapSettings enabled={agency.weekly_recap_enabled} />
       </div>
     </div>
   );
