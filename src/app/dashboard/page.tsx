@@ -1,14 +1,18 @@
+import { cookies } from "next/headers";
 import { ButtonLink, Card, Spark } from "@/components/ui";
 import { listClients } from "@/lib/clients";
 import { getViewContext } from "@/lib/view-context";
 import { getSitesOverview } from "@/lib/keep-score/overview";
 import { SiteCard } from "@/components/keep-score/SiteCard";
+import { AutoImportSite } from "@/components/scan/AutoImportSite";
 
 export default async function DashboardHome() {
-  const [clients, { supabase, viewingAs }] = await Promise.all([
+  const [clients, { supabase, viewingAs }, cookieStore] = await Promise.all([
     listClients(),
     getViewContext(),
+    cookies(),
   ]);
+  const pendingImport = Boolean(cookieStore.get("sk_pending_site"));
   const hasClients = clients.length > 0;
   const readOnly = Boolean(viewingAs);
   const overviews = await getSitesOverview(
@@ -18,6 +22,7 @@ export default async function DashboardHome() {
 
   return (
     <div>
+      {pendingImport && !readOnly && <AutoImportSite />}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Sites</h1>

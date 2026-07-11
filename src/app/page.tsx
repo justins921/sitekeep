@@ -1,29 +1,30 @@
+import { ArrowRight, Check } from "lucide-react";
 import { SiteNav } from "@/components/marketing/SiteNav";
 import { SiteFooter } from "@/components/marketing/SiteFooter";
+import { HeroScanInput } from "@/components/scan/HeroScanInput";
 import {
   Badge,
   ButtonLink,
   Card,
   StarRating,
-  Spark,
   Avatar,
 } from "@/components/ui";
 
 const SERVICES = [
   {
-    title: "Page Speed",
-    body: "Save time with one-click speed checks.",
+    title: "Uptime & incidents",
+    body: "Round-the-clock checks with alerts the moment a site drops.",
+    tint: "green" as const,
+  },
+  {
+    title: "Speed & SSL",
+    body: "Daily performance scores and certificate expiry, watched for you.",
     tint: "blue" as const,
   },
   {
-    title: "Traffic",
-    body: "Showcase growth with clear traffic insights.",
+    title: "Weekly recap",
+    body: "A client-ready email that shows the site stayed healthy all week.",
     tint: "violet" as const,
-  },
-  {
-    title: "Security",
-    body: "Give clients peace of mind with automated security checks.",
-    tint: "green" as const,
   },
 ];
 
@@ -131,23 +132,18 @@ export default function Home() {
       <section className="bg-wash">
         <div className="mx-auto max-w-6xl px-6 pb-20 pt-16 text-center sm:pt-24">
           <div className="flex items-center justify-center gap-2">
-            <Badge tone="orange">⏱️ BETA</Badge>
-            <Badge tone="brand">50% off for the first 100</Badge>
+            <Badge tone="green">One Keep Score per site</Badge>
           </div>
           <h1 className="mx-auto mt-6 max-w-4xl text-4xl font-bold leading-[1.05] tracking-tight sm:text-6xl">
-            Website done. Client gone?{" "}
-            <span className="text-brand">Not with SiteKeep.</span>
+            Prove every client site is{" "}
+            <span className="text-keep">healthy</span> — at a glance.
           </h1>
           <p className="mx-auto mt-5 max-w-2xl text-lg text-body">
-            SiteKeep gives web designers &amp; agencies the tools to keep clients
-            long after launch and monetize maintenance every month.
+            SiteKeep watches uptime, speed, SSL, and broken links, then rolls it into one
+            0–100 Keep Score you can show clients every week. Start with a free scan.
           </p>
-          <div className="mt-8 flex flex-col items-center gap-3">
-            <ButtonLink href="/signup" size="lg" className="gap-2">
-              <Spark className="h-5 w-5" /> Try for free today
-            </ButtonLink>
-            <p className="text-sm text-muted">No credit card required</p>
-          </div>
+
+          <HeroScanInput />
 
           {/* Service preview cards */}
           <div className="mt-14 grid gap-4 sm:grid-cols-3">
@@ -267,7 +263,7 @@ export default function Home() {
                   "Email report automation",
                 ].map((li) => (
                   <li key={li} className="flex items-start gap-2">
-                    <span className="text-accent-green">✓</span> {li}
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-keep" /> {li}
                   </li>
                 ))}
               </ul>
@@ -339,11 +335,11 @@ export default function Home() {
       <section className="bg-wash">
         <div className="mx-auto max-w-4xl px-6 py-20 text-center">
           <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
-            Turn one-off projects into recurring revenue.
+            See a client site&apos;s Keep Score right now.
           </h2>
           <div className="mt-8">
-            <ButtonLink href="/signup" size="lg" className="gap-2">
-              <Spark className="h-5 w-5" /> Try for free today
+            <ButtonLink href="/scan" size="lg" className="gap-2">
+              Scan a site free <ArrowRight className="h-5 w-5" />
             </ButtonLink>
           </div>
         </div>

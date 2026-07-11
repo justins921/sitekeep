@@ -1,7 +1,13 @@
 "use server";
 
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { normalizeUrl } from "@/lib/utils";
+
+/** Cookie that carries a scan-first visitor's site (and chosen plan) through
+ * signup + email confirmation, so the dashboard can auto-import it. */
+const PENDING_SITE_COOKIE = "sk_pending_site";
 
 export type AuthState =
   | { error: string }
@@ -82,6 +88,21 @@ export async function signup(
 
   if (error) {
     return { error: error.message };
+  }
+
+  // Scan-first flow: stash the scanned site + chosen plan so the dashboard can
+  // auto-import it once the account is live (survives email confirmation).
+  const site = normalizeUrl(String(formData.get("site") ?? ""));
+  if (site) {
+    const plan = String(formData.get("plan") ?? "solo") === "agency" ? "agency" : "solo";
+    const store = await cookies();
+    store.set(PENDING_SITE_COOKIE, JSON.stringify({ url: site, plan }), {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      path: "/",
+      maxAge: 60 * 60 * 24, // 1 day — long enough to confirm email
+    });
   }
 
   // When email confirmation is disabled, Supabase returns an active session and

@@ -48,10 +48,14 @@ export function AuthForm({
   mode,
   action,
   next,
+  site,
+  plan,
 }: {
   mode: "login" | "signup";
   action: Action;
   next?: string;
+  site?: string;
+  plan?: string;
 }) {
   const [state, formAction, pending] = useActionState<AuthState, FormData>(
     action,
@@ -65,6 +69,8 @@ export function AuthForm({
   return (
     <form action={formAction} className="space-y-4">
       {next && <input type="hidden" name="next" value={next} />}
+      {site && <input type="hidden" name="site" value={site} />}
+      {plan && <input type="hidden" name="plan" value={plan} />}
       {mode === "signup" && (
         <div className="space-y-1.5">
           <label htmlFor="agency_name" className="text-sm font-medium text-ink">
