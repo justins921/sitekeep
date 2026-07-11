@@ -5,6 +5,9 @@ import { getViewContext } from "@/lib/view-context";
 import { getSitesOverview } from "@/lib/keep-score/overview";
 import { SiteCard } from "@/components/keep-score/SiteCard";
 import { AutoImportSite } from "@/components/scan/AutoImportSite";
+import { requireAgency } from "@/lib/agency";
+import { getOnboardingChecklist, type OnboardingChecklist as Checklist } from "@/lib/onboarding";
+import { OnboardingChecklist } from "@/components/onboarding/OnboardingChecklist";
 
 export default async function DashboardHome() {
   const [clients, { supabase, viewingAs }, cookieStore] = await Promise.all([
@@ -20,9 +23,17 @@ export default async function DashboardHome() {
     clients.map((c) => c.id),
   );
 
+  // Activation checklist for a real owner who hasn't dismissed it.
+  let checklist: Checklist | null = null;
+  if (!readOnly && !cookieStore.get("sk_onboarding_dismissed")) {
+    const { agency } = await requireAgency();
+    checklist = await getOnboardingChecklist(supabase, agency);
+  }
+
   return (
     <div>
       {pendingImport && !readOnly && <AutoImportSite />}
+      {checklist && !checklist.allDone && <OnboardingChecklist checklist={checklist} />}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Sites</h1>

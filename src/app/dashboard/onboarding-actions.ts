@@ -10,6 +10,20 @@ import { recordUptimeCheck, writeUptimeSnapshot } from "@/lib/uptime";
 import { computeAndStoreKeepScore } from "@/lib/keep-score";
 
 const PENDING_SITE_COOKIE = "sk_pending_site";
+const ONBOARDING_DISMISSED_COOKIE = "sk_onboarding_dismissed";
+
+/** Hide the activation checklist for a year (per-browser). */
+export async function dismissOnboardingAction(): Promise<void> {
+  const store = await cookies();
+  store.set(ONBOARDING_DISMISSED_COOKIE, "1", {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: 60 * 60 * 24 * 365,
+  });
+  revalidatePath("/dashboard");
+}
 
 // Services that back the Keep Score dimensions we can measure today — enabled by
 // default on an auto-imported site so it starts scoring on the first refresh.
